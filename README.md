@@ -10,9 +10,10 @@ These are personal edits and custom changes to PyMVPA as used by our lab. They i
 ###Files
 * dataload.py - Sets up initial environment in python, importing modules and readying data
 * dset_manage.py - functions handling datasets (e.g., saving them to nifti)
-* pymvpaanalyzer.py - conglomeration of functions for various purposes in classification and RSA (see below)
+* wrapit_pymvpa.py - conglomeration of functions for various purposes in classification and RSA (see below)
 * plotter.py - functions for quick plotting results
 * rsa.py - copy of RSA measure from PyMVPA with additional functions being added, e.g., partial correlation RSA
 * pcorr.py - partial correlation code
+
 ###Functions
 In progress

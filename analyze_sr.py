@@ -1,3 +1,5 @@
+#version: 11_Nov_14
+
 ##########TO DO
 # clean up directory refs, and print outs
 # add bit to automatically detect data hdf5s and run datadict2nifti()

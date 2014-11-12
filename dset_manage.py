@@ -1,4 +1,5 @@
-from mpva2.suite import *
+#version 11_Nov_14
+from mvpa2.suite import *
 import os
 import pylab as pylab
 import numpy as np

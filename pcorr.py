@@ -1,3 +1,5 @@
+#version: 11_Nov_14
+
 import numpy as np
 #tdsm = squareform(dsms['oth']['idioAvg_12C'])
 #pdsm = squareform(dsms['oth']['orth_12'])
