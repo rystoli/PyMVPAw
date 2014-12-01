@@ -1,3 +1,6 @@
+
+#version: 11_Nov_14
+
 # emacs: -*- mode: python; py-indent-offset: 4; indent-tabs-mode: nil -*-
 # vi: set ft=python sts=4 ts=4 sw=4 et:
 ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ##
@@ -14,6 +17,7 @@ import numpy as np
 import pcorr
 from mvpa2.measures.base import Measure
 from mvpa2.datasets.base import Dataset
+from mvpa2.mappers.fx import mean_group_sample
 from scipy.spatial.distance import pdist, squareform
 from scipy.stats import rankdata, pearsonr
 
@@ -236,4 +240,78 @@ class TargetDissimilarityCorrelationMeasure(Measure):
             return Dataset(np.array([rp['rxy_z']]))
 
 
+class SampleBySampleSimilarityCorrelation(Measure):
+    """
+    Sample by sample similarity correlation `Measure`. Computes the dissimilarity of each designated sample with another specified sample(s), then returns the correlations of that distance with any variable with a value for each sample. E.g., one could have samples be betas per trial, and measure if reaction time predicts similarity between one condition and the average representation of another condition.
+    """
+    
+    is_trained = True
+    """Indicate that this measure is always trained."""
 
+    def __init__(self, comparison_sample, sample_covariable, pairwise_metric='correlation', 
+                    comparison_metric='pearson', center_data = False, 
+                    corrcoef_only = False, **kwargs):
+        """
+        Initialize
+
+        Parameters
+        ----------
+        dataset :           Dataset with N samples such that corresponding dissimilarity
+                            matrix has N*(N-1)/2 unique pairwise distances
+        comparison_sample:  sa.targets name of sample to be analyzed for compairson. Each sample in dset will have its distance to this sample calculated. mean of these samples will be used, then all of its samples omitted from the samples to be compared to the comparison_sample.
+       sample_covariable:  Name of the variable (sample attribute) with a value for each sample. The distance of each sample with the comparison_sample will be correlated with this variable.
+        pairwise_metric :   To be used by pdist to calculate dataset DSM
+                            Default: 'correlation', 
+                            see scipy.spatial.distance.pdist for other metric options.
+        comparison_metric : To be used for comparing dataset dsm with target dsm
+                            Default: 'pearson'. Options: 'pearson' or 'spearman'
+        center_data :       Center data by subtracting mean column values from
+                            columns prior to calculating dataset dsm. 
+                            Default: False
+        corrcoef_only :     If true, return only the correlation coefficient
+                            (rho), otherwise return rho and probability, p. 
+                            Default: False
+        Returns
+        -------
+        Dataset :           Dataset contains the correlation coefficient (rho) only or
+                            rho plus p, when corrcoef_only is set to false.
+
+        -------
+        TO DO:              Should this be done as repeated measures ANCOVA instead?
+                            Does not currently handle rho comparison of samples, or rho corr with covariable
+                            Should use mean_group_sample in wrapper function to get comparison_sample
+                            Maybe have omit inside this method?
+        """
+        # init base classes first
+        Measure.__init__(self, **kwargs)
+        if comparison_metric not in ['spearman','pearson']:
+            raise Exception("comparison_metric %s is not in "
+                            "['spearman','pearson']" % comparison_metric)
+        self.comparison_sample = comparison_sample
+        self.sample_covariable = sample_covariable
+        #if comparison_metric == 'spearman':
+        #    self.target_dsm = rankdata(target_dsm)
+        self.pairwise_metric = pairwise_metric
+        self.comparison_metric = comparison_metric
+        self.center_data = center_data
+        self.corrcoef_only = corrcoef_only
+
+    def _call(self,dataset):
+        data = dataset.samples
+        if self.center_data:
+            data = data - np.mean(data,0)
+
+        #compute comparison sample
+        mgs = mean_group_sample(['targets'])(dataset)
+        comp_sample_data =  mgs[mgs.sa['targets'] == self.comparison_sample]
+        #omit all samples from comparison_sample target condition
+        dataset = dataset[dataset.sa.targets != self.comparison_sample]
+
+        #calculate sample attribute of distance between sample and comparison_sample (corr coef and p value)
+        dataset.sa['sample_comp_dist_r'] = [pearsonr(s.samples[0],comp_sample_data.samples[0])[0] for s in dataset]
+        dataset.sa['sample_comp_dist_p'] = [pearsonr(s.samples[0],comp_sample_data.samples[0])[1] for s in dataset]
+        rho, p = pearsonr(dataset.sa['sample_comp_dist_r'],dataset.sa[self.sample_covariable])
+        if self.corrcoef_only:
+            return Dataset(np.array([rho,]))
+        else:
+            return Dataset(np.array([rho,p]))

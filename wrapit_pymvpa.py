@@ -1,3 +1,5 @@
+#version: 11_Nov_14
+
 from mvpa2.suite import *
 import os
 import pylab as pylab
@@ -5,6 +7,7 @@ import numpy as np
 import rsa as rsa
 from scipy.spatial.distance import pdist, squareform
 import pcorr #for partial rsa
+from dset_manage import *
 
 ##################################################
 # currently in progress of making this module with slRSA functions...
@@ -30,7 +33,7 @@ def countDig(dig,arr):
 # data/dsm prep
 ##################################################
 
-def dsms_refresh():
+def dsms_refresh(homedir,dsmspath):
     '''
     Refreshes hdf5 file with dsms from srmtfmri_dsms.py B
     '''
@@ -187,7 +190,7 @@ def slRSA_m_1Ss(ds, model, omit, partial_dsm = None, radius=3, cmetric='pearson'
         return 1-slmap.samples[1],np.arctanh(slmap.samples[0])
     else:
         print('slRSA complete with map of shape:',slmap.shape,'...r max/min:',slmap.samples[0].max(),slmap.samples[0].min())
-        return np.arctanh(slmap.samples[0])
+        return 1-slmap.samples[1],np.arctanh(slmap.samples[0])
     
 
 ###############################################
@@ -362,3 +365,51 @@ def slClass_nSs(data, omit=[], radius=3, clf = LinearCSVMC(), part = NFoldPartit
     else: return slrs
 
 
+#############################################
+# Runs SampleBySampleSimilarityCorrelation through searchlight
+#############################################
+
+def slSxS(ds, comparison_sample, sample_covariable, omit = [], radius = 3, h5 = 0, h5out = 'slSxS.hdf5'):
+    '''
+
+    Executes searchlight SampleBySampleSimilarityCorrelation, returns corr coef (and optional p value) per voxel
+
+    
+    data: dictionary of pymvpa dsets per subj, indices being subjIDs
+    comparison_sample:  Name of the sample (sa.targets target name) to be compared with each individual sample. Mean of this will be used. 
+    sample_covariable:  Name of the variable (sample attribute) with a value for each sample. The distance of each sample with the comparison_sample will be correlated with this variable.
+    omit: list of targets omitted from pymvpa datasets; VERY IMPORTANT TO GET THIS RIGHT, should omit typically all targets besides the target of interest, and comparison_sample.
+    radius: sl radius, default 3
+    clf: specify classifier
+    part: specify partitioner
+    h5: 1 if you want to save hdf5 as well
+    h5out: hdf5 outfilename
+    
+    TO DO: probably better way to keep wanted targets in dset and omit others with having to specify omits...
+    '''    
+   
+    if __debug__:
+        debug.active += ["SLC"]
+
+    for om in omit:
+        ds = ds[ds.sa.targets != om] # cut out omits
+        print('Target |%s| omitted from analysis' % (om))
+ 
+    print('Beginning slSxS analysis...')
+    SxS = rsa.SampleBySampleSimilarityCorrelation(comparison_sample,sample_covariable)
+    sl = sphere_searchlight(SxS,radius=radius)
+    slmap = sl(ds)
+
+    print('slSxS complte with map of shape:',slmap.shape,'...p max/min:',slmap.samples[0].max(),slmap.samples[0].min(),'...r max/min',slmap.samples[1].max(),slmap.samples[1].min())
+    
+    #change slmap to right format
+    slmap.samples[0],slmap.samples[1]=np.arctanh(slmap.samples[0]),1-slmap.samples[1]    
+    h5save(h5out,slmap,compression=9)
+    print('h5 saved as:',h5out)
+
+    return slmap    
+#    return slmap #not transforming to Zr or 1-p    
+#    if h5==1:
+#        h5save(h5out,np.array(1-slmap.samples[1],np.arctanh(slmap.samples[0])),compression=9)
+#        return np.array(1-slmap.samples[1],np.arctanh(slmap.samples[0]))
+#    else: return np.array(1-slmap.samples[1],np.arctanh(slmap.samples[0]))

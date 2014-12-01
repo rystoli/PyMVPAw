@@ -1,3 +1,5 @@
+#Version 11_Nov_14
+
 import numpy as np
 
 dsmslist = ['apriori','colorIdio','raceIdio','sexIdio','idioAvg_sr']

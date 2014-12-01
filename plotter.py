@@ -1,3 +1,5 @@
+#version: 11_Nov_14
+
 from mvpa2.suite import *
 import pylab as pylab
 import numpy as np
