@@ -287,8 +287,7 @@ def slRSA_xSs(data,omit,measure='DCM',radius=3,h5=0,h5out='slRSA_xSs.hdf5'):
 
 
 # to do
-# make classifier an argument
-# make omit optional....
+# make omit optional.... #Is this not already done?
 #chance_level = 1.0 - (1.0 / len(ds.uniquetargets))
 # need to set targets beforehand if swithcing what they are
 
@@ -296,16 +295,17 @@ def slRSA_xSs(data,omit,measure='DCM',radius=3,h5=0,h5out='slRSA_xSs.hdf5'):
 # Runs slClass for 1 subject # make to take kNN and halfpartiitoner, nfoldpartitioner, different clf
 ###############################################
 
-def slClass_1Ss(ds, omit=[], radius=3, clf = LinearCSVMC(), part = NFoldPartitioner()):
+def slClass_1Ss(ds, omit=[], radius=3, clf = LinearCSVMC(), part = NFoldPartitioner(), scale_result=False):
     '''
 
     Executes slClass on single subjects and returns ?avg accuracy per voxel?
 
-    ds: pymvpa dsets for 1 subj
-    omit: list of targets omitted from pymvpa datasets
-    radius: sl radius, default 3
-    clf: specify classifier
-    part: specify partitioner
+    ds:             pymvpa dsets for 1 subj
+    omit:           list of targets omitted from pymvpa datasets
+    radius:         sl radius, default 3
+    clf:            specify classifier
+    part:           specify partitioner
+    scale_result:   if True, scales the voxels that guess at chance to be 0
     '''        
 
     if __debug__:
@@ -321,17 +321,17 @@ def slClass_1Ss(ds, omit=[], radius=3, clf = LinearCSVMC(), part = NFoldPartitio
     print('Target |%s| omitted from analysis' % (omit))
 
     print('Beginning sl classification analysis...')
-    #part = NFoldPartitioner()
-    #clf = kNN(k=1, dfx=one_minus_correlation, voting='majority')
-    #clf = LinearCSVMC()
     cv=CrossValidation(clf, part, enable_ca=['stats'], errorfx=lambda p, t: np.mean(p == t))
     sl = sphere_searchlight(cv, radius=radius, postproc=mean_sample())
     slr = sl(ds)
-    return sfs.reverse(slr).samples - (1.0/len(ds.UT))
+    if scale_result:
+        return sfs.reverse(slr).samples - (1.0/len(ds.UT))
+    else:
+        return sfs.reverse(slr).samples
    
 
 ##############################################
-# Runs group level slRSA with defined model
+# Runs group level slClass
 ###############################################
 
 def slClass_nSs(data, omit=[], radius=3, clf = LinearCSVMC(), part = NFoldPartitioner(), h5 = 0, h5out = 'slSVM_nSs.hdf5'):
@@ -413,3 +413,59 @@ def slSxS(ds, comparison_sample, sample_covariable, omit = [], radius = 3, h5 = 
 #        h5save(h5out,np.array(1-slmap.samples[1],np.arctanh(slmap.samples[0])),compression=9)
 #        return np.array(1-slmap.samples[1],np.arctanh(slmap.samples[0]))
 #    else: return np.array(1-slmap.samples[1],np.arctanh(slmap.samples[0]))
+
+
+def load_subj_data(study_dir, subj_list, file_suffix='.nii.gz', attr_filename=None, remove_invariants=False, hdf5_filename=None, mask=None):
+    ''' Loads in subject files and stores them in a data_dict.
+
+        Function returns [ {data}, and [Sample Attributes] ]
+        Keys    in the data_dict are the    subject filenames
+        Values  in the data_dict are the    pymvpa datasets
+
+        Keyword arguments:
+        study_dir           -- Study directory (should contain fMRI and attr files)
+        subj_list           -- List of subject IDs
+        file_suffix         -- What to add to subject IDs to complete filename
+        attr_filename       -- Filename for Sample Attributes within study dir
+        remove_invariants   -- Remove invariant features
+        hdf5_filename       -- If not none, saves hdf5 output with this name
+        mask                -- Specify an ROI mask for the data
+    '''
+
+
+    data_dict = {}
+    flags = {}
+    if attr_filename != None:
+        print( "Loading Sample Attributes file" )
+        attr_filepath   =   os.path.join( study_dir, attr_filename )
+        attr=SampleAttributes( os.path.join( study_dir, attr_filename ) )
+        flags['targets'] = attr.targets
+        flags['chunks']  = attr.chunks
+        print( "Done\n" )
+
+    if mask != None:
+        flags['mask']    = mask
+
+    for subj in subj_list:
+        subj_filename = ''.join(( subj, file_suffix) )
+        subj_filepath = os.path.join( study_dir, subj_filename  )
+        print( 'loading subject file: %s'   %   subj_filename   )
+        print( 'from: %s\n'                 %   study_dir       )
+
+
+        data_dict[subj] = fmri_dataset( subj_filepath, **flags )
+
+        if remove_invariants:
+            print( 'Removing invariant features' )
+            data_dict[subj] = data_dict[subj].remove_invariant_features()
+            print( 'Done\n' )
+
+    print( 'Subject data successfully loaded\n' )
+
+    if hdf5_filename != None:
+        hdf5_filename = os.path.join( study_dir, hdf5_filename )
+        print( 'Saving hdf5 file: %s' % hdf5_filename )
+        h5save( hdf5_filename, data_dict, compression=9 )
+        print( 'Done\n' )
+
+    return data_dict
