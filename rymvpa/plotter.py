@@ -266,8 +266,7 @@ dsmlist = {'idioavg7friendly': np.array([[0,0.580095924,0.651805609,0.570147004,
 [0.9591309633,0.926405365,1.1215501913,1.0774071177,0.9225950163,2,0]]),}
 dsmlist = {'orth7adjusted2': a}
 for dsm in dsmlist:
-    for cmap in ['CMRmap_r','BuPu','gist_earth_r','GnBu','ocean_r','pink_r','PuBuGn','PuRd','RdYlBu','RdYlGn','Accent','jet','YlOrRd','gist_rainbow','hot','summer',
-'YlGnBu','autumn','afmhot','gist_stern','CMRmap','gnuplot2','ocean','rainbow','terrain']:
+    for cmap in []:
         imgplot = plt.imshow(dsmlist[dsm],interpolation='nearest')
         imgplot.set_cmap(cmap) #http://wiki.scipy.org/Cookbook/Matplotlib/Show_colormaps
         plt.colorbar(imgplot)
@@ -277,9 +276,6 @@ for dsm in dsmlist:
         savefig('%s_%s.png' % (dsm,cmap))
         plt.clf()
         plt.close()
-
-['CMRmap_r','BuPu','gist_earth_r','GnBu','ocean_r','pink_r','PuBuGn','PuRd','RdYlBu','RdYlGn','Accent','jet','YlOrRd','gist_rainbow','hot','summer',
-'YlGnBu','autumn','afmhot','gist_stern','CMRmap','gnuplot2','ocean','rainbow','terrain']:
 
 # text properties: http://matplotlib.org/api/artist_api.html#matplotlib.text.Text
 
