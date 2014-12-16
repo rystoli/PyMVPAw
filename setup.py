@@ -3,7 +3,7 @@
 from distutils.core import setup
 
 setup(name='rymvpa',
-        version='0.0.1',
+        version='0.0.2',
         description='PyMVPA wrapper',
         author='Ryan Stolier',
         author_email='',
