@@ -1,16 +1,11 @@
-#version 11_Nov_14
-from mvpa2.suite import *
 import os
-import pylab as pylab
-import numpy as np
+from mvpa2.suite import map2nifti
 
-
-#remap slRSA results array to native space and save to nifti
-def slRSA2nifti(ds,remap,outfile):
+def sl2nifti(ds,remap,outfile):
     '''
-    No return; converts slRSA output and saves nifti file to working directory
+    No return; converts sl output and saves nifti file to working directory
 
-    ds=array of slRSA results
+    ds=array of sl results
     remap: dataset to remap to
     outfile: string outfile name including extension .nii.gz
     '''
@@ -21,7 +16,7 @@ def slRSA2nifti(ds,remap,outfile):
 def datadict2nifti(datadict,remap,outdir,outprefix=''):
     '''
 
-    No return; runs slRSA2nifti on dictionary of slRSA data files (1subbrick), saving each file based upon its dict key
+    No return; runs sl2nifti on dictionary of sl data files (1subbrick), saving each file based upon its dict key
 
     datadict: dictionary of pymvpa datasets
     remap: dataset to remap to, or dictionary per subj in datadict
@@ -36,7 +31,7 @@ def datadict2nifti(datadict,remap,outdir,outprefix=''):
         print('Writing nifti for subject: %s' % (key))
 	if (type(remap) == dict): thisRemap=remap[key]
         else: thisRemap = remap
-        slRSA2nifti(ds,thisRemap,os.path.join(outdir,'%s%s.nii.gz' % (outprefix,key)))
+        sl2nifti(ds,thisRemap,os.path.join(outdir,'%s%s.nii.gz' % (outprefix,key)))
         print('NIfTI successfully saved: %s' % (os.path.join(outdir,'%s%s.nii.gz' % (outprefix,key))))
 
 def omit_targets(ds,omit):
