@@ -560,3 +560,15 @@ def normalize(data,method = 'featureByChunk'):
 	elif method == 'featureZ':
 		for s in data:
 			data[s].samples = (data[s].samples - np.mean(data[s],axis=0))/np.std(data[s],axis=0)
+	elif method == 'featureMD':
+		for s in data:
+			data[s].samples = data[s].samples - np.mean(data[s],axis=0)
+	elif method == 'sampleMD':
+		for s in data:
+			for i in range(len(data[s])):
+				data[s].samples[i] = (data[s][i].samples - np.mean(data[s][data[s].sa.targets == data[s][i].targets]))
+	elif method == 'sampleZ':
+		for s in data:
+			for i in range(len(data[s])):
+				data[s].samples[i] = (data[s][i].samples - np.mean(data[s][data[s].sa.targets == data[s][i].targets]))/np.std(data[s][data[s].sa.targets == data[s][i].targets])
+	return data
