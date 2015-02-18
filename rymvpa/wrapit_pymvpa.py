@@ -469,3 +469,94 @@ def load_subj_data(study_dir, subj_list, file_suffix='.nii.gz', attr_filename=No
         print( 'Done\n' )
 
     return data_dict
+
+
+#############################################
+# Functions for classificaiton of ROIs
+#############################################
+
+def stdev_percat(cataccs):
+    '''
+	Returns dict of stdev per category b/w subjects
+	
+	cataccs: input is list of ACC per cat per subject
+	'''
+    accpercat,stdpercat={},{}
+    for i in cataccs[0].keys():
+        accpercat[i] = [cataccs[j][i] for j in range(len(cataccs))]
+    for i in accpercat.keys():
+        stdpercat[i] = np.std(accpercat[i])
+    return stdpercat
+
+def acc_percat(c_sum):
+    '''
+	Returns dict of ACC per category
+	
+	c_sum: summed confusion matrix across subject
+	'''
+    labels = c_sum.labels
+    #pulls in all cat rates
+    TPA,PA = c_sum.stats["TP"],c_sum.stats["P"]
+    ACC = {}
+    for i in range(len(labels)):
+        TP,P = float(TPA[i]),float(PA[i])
+        ACC[labels[i]]=(TP/P)
+    return ACC
+
+#classification 
+def classify(data):
+	'''
+	Returns results from classification of dataset by all targets in dataset
+	
+	data: dictionary of data, keys are subject Ids, values their datasets
+	
+	***NEED TO MAKE ARGS FOR CLASSIFIERS ETC***
+	'''
+    clf = LinearCSVMC([-1])
+    #clf = kNN(k=1, dfx=one_minus_correlation, voting='majority')
+    confusions=[]
+    cataccs=[]
+    for ds in data.itervalues():
+        cv = CrossValidation(clf,NFoldPartitioner(), enable_ca=['stats'])
+        errors = cv(ds)
+        confusions.append(cv.ca.stats)
+        cataccs.append(acc_percat(cv.ca.stats))
+    c_sum = pylab.sum(confusions)
+    ACC=acc_percat(c_sum)
+    stdev=stdev_percat(cataccs)
+    return {'c_sum': c_sum, 'ACC': ACC, 'stdev': stdev}
+
+def class_plotter(classdict,pout):
+	'''
+	Saves plots as .png files in current directory for both average confusion matrix and results histrograms
+	
+	classdict: output of classify function above
+	pout: output name for picture
+	'''
+    c_sum,ACC,stdev=classdict['c_sum'],classdict['ACC'],classdict['stdev']
+    #make confusion matrices
+    c_sum.plot()
+    pylab.plt.savefig('%s_confusion.png' % (pout))
+    pylab.clf() #clears confusion matrix
+    #make histograms
+    X,ymax = np.arange(len(ACC)),1
+    pylab.bar(X, ACC.values(), align='center', width=0.5, yerr=stdev.values(), ecolor="red")
+    pylab.xticks(X, ACC.keys())
+    pylab.ylim(0, ymax)
+    pylab.plt.savefig('%s_hist.png' % (pout),format='png')
+    pylab.clf() #clears hist
+    pylab.close()
+
+def normalize(data,method = 'featureByChunk'):
+	'''
+	Returns dataset normalized
+	
+	data = dictionary with data per subject, key is subject ID
+	method = specific normalization method: ['featureByChunk','featureZ','featureMD','sampleZ','sampleMD']
+	'''
+    if method == 'featureByChunk': 
+		for s in data:
+			zscore(data[s])
+	elif method == 'featureZ':
+		for s in data:
+			data[s].samples = (data[s].samples - np.mean(data[s],axis=0))/np.std(data[s],axis=0)
