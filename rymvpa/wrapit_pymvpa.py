@@ -229,7 +229,29 @@ def slRSA_m_nSs(data, model, omit, radius=3, partial_dsm = None, cmetric = 'pear
         return slr
     else: return slr
     
+###############################################
+# idiosyncratic slRSA: DM per subject
+###############################################
 
+def idio_slRSA(datadict,idioDMs,omit=[],partial_dsm=None,cmetric='spearman',h5name='out.hdf5'):
+    '''
+    
+    Returns avg map of corrs per subject, using unique DM per subject, specified in dict of DMs
+    
+    datadict: dict of subject data, subject as keys
+    idioDMs: dict of DM per subject, subject as keys
+    omit: list of targets to omit
+    partial_dsm: DM to partial out
+    cmetric: yaknow
+    h5name: yaknow
+    '''
+    
+    idio = {}
+    for s,dm in idioDMs.iteritems():
+        idio[s] = slRSA_m_1Ss(datadict[s],dm,omit,partial_dsm=partial_dsm,cmetric=cmetric)
+    h5save(h5name,idio,compression=9)
+    return idio
+    
 ###############################################
 # across subjects RSA
 ###############################################
