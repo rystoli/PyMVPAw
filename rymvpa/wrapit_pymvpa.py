@@ -437,6 +437,52 @@ def slSxS(ds, comparison_sample, sample_covariable, omit = [], radius = 3, h5 = 
 #    else: return np.array(1-slmap.samples[1],np.arctanh(slmap.samples[0]))
 
 
+###############################################
+# BDSM 
+###############################################
+
+def slBDSM_xSs(data,xSs_behav,targ_comp,radius=3,h5=0,h5out='bdsm_xSs.hdf5'):
+    '''
+    
+    Returns correlation of subject-level behav sim with subject-level neural sim between two targs
+
+    data: dictionary of pymvpa dsets per subj, indices being subjIDs
+    xSs_behav: Dictionary of behavioral value between subjects to be
+               correlated with intrasubject neural similarity (subjects are keys)
+    targ_comp: List of targets whose similarity is correlated with xSs_behav
+    radius: sl radius, default 3
+    h5: 1 saves hdf5 of output as well 
+    h5out: hdf5 outfilename
+    
+    '''   
+
+    print('xSs BDSM initiated with...\n Ss: %s \n targ_comp: %s\nradius: %s\nh5: %s\nh5out: %s' % (data.keys(),targ_comp,radius,h5,h5out))
+
+    if __debug__:
+        debug.active += ["SLC"]
+    
+    for i in data:
+        data[i] = mean_group_sample(['targets'])(data[i]) 
+    print('Dataset targets averaged with shapes:',[ds.shape for ds in data.values()])
+
+    group_data = None
+    for s in data.keys():
+         ds = data[s]
+         ds.sa['chunks'] = [s]*len(ds)
+         if group_data is None: group_data = ds
+         else: group_data.append(ds)
+    print('Group dataset ready including Ss: %s\nBeginning slBDSM:' % (np.unique(group_data.chunks)))
+    bdsm = rsa_adv.xss_BehavioralDissimilarity(xSs_behav,targ_comp)
+    sl_bdsm = sphere_searchlight(bdsm,radius=radius)
+    slmap_bdsm = sl_bdsm(group_data)
+    print('Analysis complete with shape:',slmap_bdsm.shape)
+    if h5 == 1:
+        h5save(h5out,slmap_bdsm,compression=9)
+        return slmap_bdsm
+    else: return slmap_bdsm
+
+
+
 def load_subj_data(study_dir, subj_list, file_suffix='.nii.gz', attr_filename=None, remove_invariants=False, hdf5_filename=None, mask=None):
     ''' Loads in subject files and stores them in a data_dict.
 
