@@ -39,6 +39,8 @@ class xss_BehavioralDissimilarity(Measure):
         ----------
         xSs_behav:          Dictionary of behavioral value between subjects to be
                             correlated with intrasubject neural similarity (subjects are keys)
+                            ***calculates neural similarity NOT dissimilarity, so similarity between
+                            ***behavioral and neural similarity is positive if xSs_behav is similarity+
         targ_comp:          List of targets whose similarity is correlated with xSs_behav
         chunks_attr :       Chunks attribute to use for chunking dataset. Can be any
                             samples attribute specified in the dataset.sa dict.
