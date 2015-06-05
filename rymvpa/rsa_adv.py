@@ -23,21 +23,16 @@ from scipy.stats import rankdata, pearsonr
 
 class xss_BehavioralDissimilarity(Measure):
     """
-    Dissimilarity Consistency `Measure` calculates the correlations across
-    chunks for pairwise dissimilarity matrices defined over the samples in each
-    chunk.
+    Between Subjects Behavioral Dissimilarity Measure is a method that caculates the neural
+    similarity between two conditions per subject, then correlates another subject-level
+    variable with the neural similarity of the two conditions between subjects. I.e.,
+    This looks at whether an individual difference predicts neural similarity of representations. 
 
-    This measures the consistency in similarity structure across runs
-    within individuals, or across individuals if the target dataset is made from
-    several subjects in some common space and where the sample attribute
-    specified as the chunks_attr codes for subject identity.
-
-    @author: ACC Aug 2013
     """
     is_trained = True
     """Indicate that this measure is always trained."""
 
-    def __init__(self, xSs_behav, targ_comp, chunks_attr='chunks', **kwargs):
+    def __init__(self, xSs_behav, targ_comp, comparison_metric='pearson', chunks_attr='chunks', **kwargs):
         """Initialize
 
         Parameters
@@ -48,12 +43,7 @@ class xss_BehavioralDissimilarity(Measure):
         chunks_attr :       Chunks attribute to use for chunking dataset. Can be any
                             samples attribute specified in the dataset.sa dict.
                             (Default: 'chunks')
-        pairwise_metric :   Distance metric to use for calculating dissimilarity
-                            matrices from the set of samples in each chunk specified.
-                            See spatial.distance.pdist for all possible metrics.
-                            (Default = 'correlation', i.e. one minus Pearson correlation)
-        consistency_metric: Correlation measure to use for the correlation
-                            between dissimilarity matrices. Options are
+        comparison_metric:  Distance measure for behavioral to neural comparison.
                             'pearson' (default) or 'spearman'
         center_data :       boolean. (Optional. Default = False) If True then center 
                             each column of the data matrix by subtracing the column 
@@ -76,6 +66,7 @@ class xss_BehavioralDissimilarity(Measure):
         self.xSs_behav = xSs_behav
         self.targ_comp = targ_comp
         self.chunks_attr = chunks_attr
+        self.comparison_metric = comparison_metric
 
     def _call(self, dataset):
         """Computes the aslmap_dcm = sl_dcm(group_data)verage correlation in similarity structure across chunks."""
@@ -91,13 +82,15 @@ class xss_BehavioralDissimilarity(Measure):
         neur_sim={}
         for s in np.unique(dataset.sa[chunks_attr]):
             ds_s = dataset[dataset.sa.chunks == s]
-            neur_sim[s] = 1 - np.corrcoef(ds_s[ds_s.sa.targets == self.targ_comp[0]],ds_s[ds_s.sa.targets == self.targ_comp[1]])[0][1]            
+            neur_sim[s] = np.corrcoef(ds_s[ds_s.sa.targets == self.targ_comp[0]],ds_s[ds_s.sa.targets == self.targ_comp[1]])[0][1]            
         #create dsets where cols are neural sim and mt sim for correlations
         behav_neur = np.array([[self.xSs_behav[s],neur_sim[s]] for s in neur_sim])
         #correlate behav with neur sim b/w subjects
-        xSs_corr = pearsonr(behav_neur[:,0],behav_neur[:,1]) 
+        if comparison_metric == 'spearman':
+            xSs_corr = pearsonr(rankdata(behav_neur[:,0]),rankdata(behav_neur[:,1])) 
+        xSs_corr = pearsonr(behav_neur[:,0],behav_neur[:,1])
         
-        #returns fish z transformed r coeff
+        #returns fish z transformed r coeff ; could change to be p value if wanted...
         return Dataset(np.array([np.arctanh(xSs_corr[0])])) 
 
 
