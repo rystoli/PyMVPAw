@@ -391,7 +391,7 @@ def slClass_nSs(data, omit=[], radius=3, clf = LinearCSVMC(), part = NFoldPartit
 # Runs SampleBySampleSimilarityCorrelation through searchlight
 #############################################
 
-def slSxS(ds, comparison_sample, sample_covariable, omit = [], radius = 3, h5 = 0, h5out = 'slSxS.hdf5'):
+def slSxS_1Ss(ds, comparison_sample, sample_covariable, omit = [], radius = 3, h5 = 0, h5out = 'slSxS.hdf5'):
     '''
 
     Executes searchlight SampleBySampleSimilarityCorrelation, returns corr coef (and optional p value) per voxel
@@ -402,8 +402,6 @@ def slSxS(ds, comparison_sample, sample_covariable, omit = [], radius = 3, h5 = 
     sample_covariable:  Name of the variable (sample attribute) with a value for each sample. The distance of each sample with the comparison_sample will be correlated with this variable.
     omit: list of targets omitted from pymvpa datasets; VERY IMPORTANT TO GET THIS RIGHT, should omit typically all targets besides the target of interest, and comparison_sample.
     radius: sl radius, default 3
-    clf: specify classifier
-    part: specify partitioner
     h5: 1 if you want to save hdf5 as well
     h5out: hdf5 outfilename
     
@@ -435,6 +433,43 @@ def slSxS(ds, comparison_sample, sample_covariable, omit = [], radius = 3, h5 = 
 #        h5save(h5out,np.array(1-slmap.samples[1],np.arctanh(slmap.samples[0])),compression=9)
 #        return np.array(1-slmap.samples[1],np.arctanh(slmap.samples[0]))
 #    else: return np.array(1-slmap.samples[1],np.arctanh(slmap.samples[0]))
+
+
+##############################################
+# SxS group 
+###############################################
+
+def slSxS_nSs(data, targs_comps, sample_covariable, omit=[], radius=3, h5 = 0, h5out = 'slSxS_nSs.hdf5'):
+    '''
+
+    Executes searchlight SampleBySampleSimilarityCorrelation, returns corr coef (and optional p value) per voxel
+
+    ***assumes anything not in targs_comps is omitted***
+
+    data: dictionary of pymvpa dsets per subj, indices being subjIDs
+    comparison_sample:  Dict of SxS targets (keys) and comparison targets (values)
+    sample_covariable:  Name of the variable (sample attribute) with a value for each sample. The distance of each sample with the comparison_sample will be correlated with this variable.
+    omit: list of targets omitted from pymvpa datasets; VERY IMPORTANT TO GET THIS RIGHT, should omit typically all targets besides the target of interest, and comparison_sample.
+    radius: sl radius, default 3
+    h5: 1 if you want to save hdf5 as well
+    h5out: hdf5 outfilename
+    '''        
+    
+    print('slSxS initiated with...\n Ss: %s\ncomparison sample: %s\nsample covariable: %s\nomitting: %s\nradius: %s\nh5: %s\nh5out: %s' % (data.keys(),targs_comps,sample_covariable,omit,radius,h5,h5out))
+
+    ### slSxS per subject ###
+    slrs={} #dictionary to hold reuslts per subj
+    print('Beginning group level searchlight on %s Ss...' % (len(data)))
+    for subjid,ds in data.iteritems():
+        print('\Running slSxS for subject %s' % (subjid))
+        subj_data = slSxS_1Ss(ds,targs_comps,sample_covariable,omit,radius)
+        slrs[subjid] = subj_data
+    print('slSxS complete for all subjects')
+
+    if h5==1:
+        h5save(h5out,slrs,compression=9)
+        return slrs
+    else: return slrs
 
 
 ###############################################
