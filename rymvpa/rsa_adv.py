@@ -96,7 +96,8 @@ class xss_BehavioralDissimilarity(Measure):
 
 class SampleBySampleSimilarityCorrelation(Measure):
     """
-    Sample by sample similarity correlation `Measure`. Computes the dissimilarity of each designated sample with another specified sample(s), then returns the correlations of that distance with any variable with a value for each sample. E.g., one could have samples be betas per trial, and measure if reaction time predicts similarity between one condition and the average representation of another condition.
+    Sample by sample similarity correlation `Measure`. Computes the dissimilarity of each designated sample with another specified sample(s), then returns the correlations of that distance with any variable with a value for each sample. E.g., one could have samples be betas per trial, and measure if reaction time predicts similarity between one condition and the average representation of another condition. 
+    **importantly, assumes anything not used in analysis is removed from dataset (targets)
     """
     
     is_trained = True
@@ -112,8 +113,11 @@ class SampleBySampleSimilarityCorrelation(Measure):
         ----------
         dataset :           Dataset with N samples such that corresponding dissimilarity
                             matrix has N*(N-1)/2 unique pairwise distances
-        comparison_sample:  sa.targets name of sample to be analyzed for compairson. Each sample in dset will have its distance to this sample calculated. mean of these samples will be used, then all of its samples omitted from the samples to be compared to the comparison_sample.
-       sample_covariable:  Name of the variable (sample attribute) with a value for each sample. The distance of each sample with the comparison_sample will be correlated with this variable.
+        targs_comps:        Dict of trial by trial targets (keys) and their comparison targets 
+                            (values) - ***this measure assumes other omitted first***
+        sample_covariable:  Name of the variable (sample attribute) with a value for each sample. 
+                            The distance of each sample with the comparison_sample will be 
+                            correlated with this variable.
         pairwise_metric :   To be used by pdist to calculate dataset DSM
                             Default: 'correlation', 
                             see scipy.spatial.distance.pdist for other metric options.
@@ -124,7 +128,7 @@ class SampleBySampleSimilarityCorrelation(Measure):
                             Default: False
         corrcoef_only :     If true, return only the correlation coefficient
                             (rho), otherwise return rho and probability, p. 
-                            Default: False
+                            Default: False 
         Returns
         -------
         Dataset :           Dataset contains the correlation coefficient (rho) only or
@@ -132,7 +136,8 @@ class SampleBySampleSimilarityCorrelation(Measure):
 
         -------
         TO DO:              Should this be done as repeated measures ANCOVA instead?
-                            Does not currently handle rho comparison of samples, or rho corr with covariable
+                            Does not currently handle rho comparison of samples, or rho 
+                            corr with covariable
                             Should use mean_group_sample in wrapper function to get comparison_sample
                             Maybe have omit inside this method?
         """
@@ -141,7 +146,7 @@ class SampleBySampleSimilarityCorrelation(Measure):
         if comparison_metric not in ['spearman','pearson']:
             raise Exception("comparison_metric %s is not in "
                             "['spearman','pearson']" % comparison_metric)
-        self.comparison_sample = comparison_sample
+        self.targs_comps = targs_comps
         self.sample_covariable = sample_covariable
         #if comparison_metric == 'spearman':
         #    self.target_dsm = rankdata(target_dsm)
@@ -156,16 +161,19 @@ class SampleBySampleSimilarityCorrelation(Measure):
             data = data - np.mean(data,0)
 
         #compute comparison sample
-        mgs = mean_group_sample(['targets'])(dataset)
-        comp_sample_data =  mgs[mgs.sa['targets'] == self.comparison_sample]
-        #omit all samples from comparison_sample target condition
-        dataset = dataset[dataset.sa.targets != self.comparison_sample]
+        comp_samps = mean_group_sample(['targets'])(dataset)
+        #omit all samples from comparison_sample target conditions
+        for om in self.targs_comps.values():
+            dataset = dataset[dataset.sa.targets != om] 
 
         #calculate sample attribute of distance between sample and comparison_sample (corr coef and p value)
-        dataset.sa['sample_comp_dist_r'] = [pearsonr(s.samples[0],comp_sample_data.samples[0])[0] for s in dataset]
-        dataset.sa['sample_comp_dist_p'] = [pearsonr(s.samples[0],comp_sample_data.samples[0])[1] for s in dataset]
+        dataset.sa['sample_comp_dist_r'] = [pearsonr(s.samples[0],comp_samps[comp_samps.sa.targets == self.targs_comps[s.sa.targets[0]]].samples[0])[0] for s in dataset]
+        dataset.sa['sample_comp_dist_p'] = [pearsonr(s.samples[0],comp_samps[comp_samps.sa.targets == self.targs_comps[s.sa.targets[0]]].samples[0])[1] for s in dataset]
+        #calculate final correlations
         rho, p = pearsonr(dataset.sa['sample_comp_dist_r'],dataset.sa[self.sample_covariable])
         if self.corrcoef_only:
             return Dataset(np.array([rho,]))
         else:
             return Dataset(np.array([rho,p]))
+
+
