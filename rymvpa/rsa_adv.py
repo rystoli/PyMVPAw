@@ -39,8 +39,6 @@ class xss_BehavioralDissimilarity(Measure):
         ----------
         xSs_behav:          Dictionary of behavioral value between subjects to be
                             correlated with intrasubject neural similarity (subjects are keys)
-                            ***calculates neural similarity NOT dissimilarity, so similarity between
-                            ***behavioral and neural similarity is positive if xSs_behav is similarity+
         targ_comp:          List of targets whose similarity is correlated with xSs_behav
         chunks_attr :       Chunks attribute to use for chunking dataset. Can be any
                             samples attribute specified in the dataset.sa dict.
@@ -84,11 +82,11 @@ class xss_BehavioralDissimilarity(Measure):
         neur_sim={}
         for s in np.unique(dataset.sa[chunks_attr]):
             ds_s = dataset[dataset.sa.chunks == s]
-            neur_sim[s] = np.corrcoef(ds_s[ds_s.sa.targets == self.targ_comp[0]],ds_s[ds_s.sa.targets == self.targ_comp[1]])[0][1]            
+            neur_sim[s] = 1 - np.corrcoef(ds_s[ds_s.sa.targets == self.targ_comp[0]],ds_s[ds_s.sa.targets == self.targ_comp[1]])[0][1]            
         #create dsets where cols are neural sim and mt sim for correlations
         behav_neur = np.array([[self.xSs_behav[s],neur_sim[s]] for s in neur_sim])
         #correlate behav with neur sim b/w subjects
-        if comparison_metric == 'spearman':
+        if self.comparison_metric == 'spearman':
             xSs_corr = pearsonr(rankdata(behav_neur[:,0]),rankdata(behav_neur[:,1])) 
         xSs_corr = pearsonr(behav_neur[:,0],behav_neur[:,1])
         
