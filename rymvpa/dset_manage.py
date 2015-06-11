@@ -82,3 +82,16 @@ def select_targets_data(data, select):
 	ds= data[key]
 	data[key]= select_targets(ds, select)
     return data
+    
+def mask_dset(dset, mask):
+    '''
+    Returns masked dataset
+
+    ds: pymvpa dataset
+    mask: binary [0,1] mask file in nii format
+    '''
+
+    mask = datasets.mri._load_anyimg(mask)[0]
+    flatmask = ds.a.mapper.forward1(mask)
+    return ds[:, flatmask != 0]
+
