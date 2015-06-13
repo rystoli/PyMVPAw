@@ -516,6 +516,102 @@ def slBDSM_xSs(data,xSs_behav,targ_comp,radius=3,h5=0,h5out='bdsm_xSs.hdf5'):
         return slmap_bdsm
     else: return slmap_bdsm
 
+##############################################
+# BDSM ROI
+###############################################
+
+def roiBDSM_xSs(data, xSs_behav, targ_comp, roi_mask_nii_path, h5 = 0,h5out = 'bdsm_roi.hdf5'):
+    '''
+    
+    Returns correlation of subject-level behav sim with subject-level neural sim between two targs
+
+    data: dictionary of pymvpa dsets per subj, indices being subjIDs
+    xSs_behav: Dictionary of behavioral value between subjects to be
+               correlated with intrasubject neural similarity (subjects are keys)
+    targ_comp: List of targets whose similarity is correlated with xSs_behav
+    roi_mask_nii_path: Nifti file location of binary  mask for ROI
+    h5: 1 saves hdf5 of output as well 
+    h5out: hdf5 outfilename
+    
+    '''
+
+    print('xSs BDSM initiated with...\n Ss: %s \n targ_comp: %s\nroi_mask: %s\nh5: %s\nh5out: %s' % (data.keys(),targ_comp,roi_mask_nii_path,h5,h5out))
+
+    for i in data:
+        data[i] = mean_group_sample(['targets'])(data[i])
+    print('Dataset targets averaged with shapes:',[ds.shape for ds in data.values()])
+
+    group_data = None
+    for s in data.keys():
+         ds = data[s]
+         ds.sa['chunks'] = [s]*len(ds)
+         if group_data is None: group_data = ds
+         else: group_data.append(ds)
+    print('Group dataset ready including Ss: %s\nBeginning slBDSM:' % (np.unique(group_data.chunks)))
+    group_data_m = mask_dset(group_data,roi_mask_nii_path)
+    print('Group dataset masked, to size: %s' % (str(group_data_m.shape)))
+
+    bdsm = rsa_adv.xss_BehavioralDissimilarity(xSs_behav,targ_comp)
+    roi_bdsm = bdsm(group_data_m)
+    bdsmr = roi_bdsm.samples[0][0]
+    print('Analysis complete with r: %s' % (str(bdsmr)))
+
+    if h5 == 1:
+        h5save(h5out,bdsmr,compression=9)
+        return bdsmr
+    else: return bdsmr
+
+
+###############################################
+# BDSM ROI double
+###############################################
+
+def roiBDSM_xSs_d(data,xSs_behav1,targ_comp1,xSs_behav2,targ_comp2,roi_mask_nii_path,h5=0,h5out='bdsm_xSs.hdf5'):
+    '''
+    
+    Returns correlation of subject-level behav sim with subject-level neural sim between two targs
+
+    data: dictionary of pymvpa dsets per subj, indices being subjIDs
+    xSs_behav: Dictionary of behavioral value between subjects to be
+               correlated with intrasubject neural similarity (subjects are keys)
+    targ_comp: List of targets whose similarity is correlated with xSs_behav
+    roi_mask_nii_path: path to nifti mask file for ROI
+    h5: 1 saves hdf5 of output as well 
+    h5out: hdf5 outfilename
+    
+    '''
+
+    print('xSs BDSM initiated with...\n Ss: %s \n targ_comp1: %s\n targ_comp2: %s\n mask_roi: %s\nh5: %s\nh5out: %s' % (data.keys(),targ_comp1,targ_comp2,roi_mask_nii_path,h5,h5out))
+
+    for i in data:
+        data[i] = mean_group_sample(['targets'])(data[i])
+    print('Dataset targets averaged with shapes:',[ds.shape for ds in data.values()])
+
+    group_data = None
+    for s in data.keys():
+         ds = data[s]
+         ds.sa['chunks'] = [s]*len(ds)
+         if group_data is None: group_data = ds
+         else: group_data.append(ds)
+    print('Group dataset ready including Ss: %s\nBeginning slBDSM:' % (np.unique(group_data.chunks)))
+
+    group_data_m = mask_dset(group_data,roi_mask_nii_path)
+    print('Group dataset masked, to size: %s' % (str(group_data_m.shape)))
+
+    bdsm = rsa_adv.xss_BehavioralDissimilarity_double(xSs_behav1,targ_comp1,xSs_behav2,targ_comp2)
+    roi_bdsm = bdsm(group_data_m)
+    bdsmr = roi_bdsm.samples[0][0]
+    print('Analysis complete with r: %s' % (str(bdsmr)))
+
+    if h5 == 1:
+        h5save(h5out,bdsmr,compression=9)
+        return bdsmr
+    else: return bdsmr
+
+
+#########################################
+# load subj data
+#########################################
 
 
 def load_subj_data(study_dir, subj_list, file_suffix='.nii.gz', attr_filename=None, remove_invariants=False, hdf5_filename=None, mask=None):
