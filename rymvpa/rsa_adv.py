@@ -1,5 +1,3 @@
-# emacs: -*- mode: python; py-indent-offset: 4; indent-tabs-mode: nil -*-
-# vi: set ft=python sts=4 ts=4 sw=4 et:
 ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ##
 #
 #   See COPYING file distributed along with the PyMVPA package for the
@@ -94,6 +92,93 @@ class xss_BehavioralDissimilarity(Measure):
         return Dataset(np.array([np.arctanh(xSs_corr[0])])) 
 
 
+class xss_BehavioralDissimilarity_double(Measure):
+    """
+    Between Subjects Behavioral Dissimilarity Measure is a method that caculates the neural
+    similarity between two conditions per subject, then correlates another subject-level
+    variable with the neural similarity of the two conditions between subjects. I.e.,
+    This looks at whether an individual difference predicts neural similarity of representations. 
+
+    """
+    is_trained = True
+    """Indicate that this measure is always trained."""
+
+    def __init__(self, xSs_behav1, targ_comp1, xSs_behav2, targ_comp2, comparison_metric='pearson', chunks_attr='chunks', **kwargs):
+        """Initialize 
+
+           Parameters
+        ----------
+        xSs_behav:          Dictionary of behavioral value between subjects to be
+                            correlated with intrasubject neural similarity (subjects are keys)
+        targ_comp:          List of targets whose similarity is correlated with xSs_behav
+        chunks_attr :       Chunks attribute to use for chunking dataset. Can be any
+                            samples attribute specified in the dataset.sa dict.
+                            (Default: 'chunks')
+        comparison_metric:  Distance measure for behavioral to neural comparison.
+                            'pearson' (default) or 'spearman'
+        center_data :       boolean. (Optional. Default = False) If True then center 
+                            each column of the data matrix by subtracing the column 
+                            mean from each element  (by chunk if chunks_attr 
+                            specified). This is recommended especially when using 
+                            pairwise_metric = 'correlation'.  
+
+        Returns
+        -------
+        Dataset:    Contains an array of the pairwise correlations between the
+                    DSMs defined for each chunk of the dataset. Length of array
+                    will be N(N-1)/2 for N chunks.
+
+        To Do:
+        Another metric for consistency metric could be the "Rv" coefficient...  (ac)
+        """
+        # init base classes first
+        Measure.__init__(self, **kwargs)
+
+        self.xSs_behav1 = xSs_behav1
+        self.targ_comp1 = targ_comp1
+        self.xSs_behav2 = xSs_behav2
+        self.targ_comp2 = targ_comp2
+        self.chunks_attr = chunks_attr
+        self.comparison_metric = comparison_metric
+
+    def _call(self, dataset):
+        """Computes the aslmap_dcm = sl_dcm(group_data)verage correlation in similarity structure across chunks."""
+        
+        chunks_attr = self.chunks_attr
+        nchunks = len(np.unique(dataset.sa[chunks_attr]))
+        if nchunks < 2:
+            raise StandardError("This measure calculates similarity consistency across "
+                                "chunks and is not meaningful for datasets with only "
+                                "one chunk:")
+
+        #calc neur sim b/w targ_comp targets per subject
+        neur_sim={}
+        for s in np.unique(dataset.sa[chunks_attr]):
+            ds_s = dataset[dataset.sa.chunks == s]
+            neur_sim[s+'1'] = 1 - np.corrcoef(ds_s[ds_s.sa.targets == self.targ_comp1[0]],ds_s[ds_s.sa.targets == self.targ_comp1[1]])[0][1]            
+            neur_sim[s+'2'] = 1 - np.corrcoef(ds_s[ds_s.sa.targets == self.targ_comp2[0]],ds_s[ds_s.sa.targets == self.targ_comp2[1]])[0][1]            
+
+        #combine xSs_behavs
+        xSs_behav = {}
+        for s in self.xSs_behav1:
+            xSs_behav[s+'1'] = self.xSs_behav1[s]
+        for s in self.xSs_behav2:
+            xSs_behav[s+'2'] = self.xSs_behav2[s]
+
+        #create dsets where cols are neural sim and mt sim for correlations
+        behav_neur = np.array([[xSs_behav[s],neur_sim[s]] for s in neur_sim])
+        #correlate behav with neur sim b/w subjects
+        if self.comparison_metric == 'spearman':
+            xSs_corr = pearsonr(rankdata(behav_neur[:,0]),rankdata(behav_neur[:,1])) 
+        xSs_corr = pearsonr(behav_neur[:,0],behav_neur[:,1])
+        
+        #returns fish z transformed r coeff ; could change to be p value if wanted...
+        return Dataset(np.array([np.arctanh(xSs_corr[0])])) 
+
+
+
+
+
 class SampleBySampleSimilarityCorrelation(Measure):
     """
     Sample by sample similarity correlation `Measure`. Computes the dissimilarity of each designated sample with another specified sample(s), then returns the correlations of that distance with any variable with a value for each sample. E.g., one could have samples be betas per trial, and measure if reaction time predicts similarity between one condition and the average representation of another condition. 
@@ -103,7 +188,7 @@ class SampleBySampleSimilarityCorrelation(Measure):
     is_trained = True
     """Indicate that this measure is always trained."""
 
-    def __init__(self, comparison_sample, sample_covariable, pairwise_metric='correlation', 
+    def __init__(self, targs_comps, sample_covariable, pairwise_metric='correlation', 
                     comparison_metric='pearson', center_data = False, 
                     corrcoef_only = False, **kwargs):
         """
@@ -175,5 +260,7 @@ class SampleBySampleSimilarityCorrelation(Measure):
             return Dataset(np.array([rho,]))
         else:
             return Dataset(np.array([rho,p]))
+
+
 
 
