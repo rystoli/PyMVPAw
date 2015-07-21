@@ -1,13 +1,15 @@
-#version: 11_Nov_14
+#7/19/15
 
 from mvpa2.suite import *
 import os
 import pylab as pylab
 import numpy as np
 import rsa as rsa
+import rsa_adv as rsa_adv
 from scipy.spatial.distance import pdist, squareform
 import pcorr #for partial rsa
 from dset_manage import *
+from slClassification import *
 
 ##################################################
 # currently in progress of making this module with slRSA functions...
@@ -229,29 +231,7 @@ def slRSA_m_nSs(data, model, omit, radius=3, partial_dsm = None, cmetric = 'pear
         return slr
     else: return slr
     
-###############################################
-# idiosyncratic slRSA: DM per subject
-###############################################
 
-def idio_slRSA(datadict,idioDMs,omit=[],partial_dsm=None,cmetric='spearman',h5name='out.hdf5'):
-    '''
-    
-    Returns avg map of corrs per subject, using unique DM per subject, specified in dict of DMs
-    
-    datadict: dict of subject data, subject as keys
-    idioDMs: dict of DM per subject, subject as keys
-    omit: list of targets to omit
-    partial_dsm: DM to partial out
-    cmetric: yaknow
-    h5name: yaknow
-    '''
-    
-    idio = {}
-    for s,dm in idioDMs.iteritems():
-        idio[s] = slRSA_m_1Ss(datadict[s],dm,omit,partial_dsm=partial_dsm,cmetric=cmetric)
-    h5save(h5name,idio,compression=9)
-    return idio
-    
 ###############################################
 # across subjects RSA
 ###############################################
@@ -309,7 +289,8 @@ def slRSA_xSs(data,omit,measure='DCM',radius=3,h5=0,h5out='slRSA_xSs.hdf5'):
 
 
 # to do
-# make omit optional.... #Is this not already done?
+# make classifier an argument
+# make omit optional....
 #chance_level = 1.0 - (1.0 / len(ds.uniquetargets))
 # need to set targets beforehand if swithcing what they are
 
@@ -317,17 +298,16 @@ def slRSA_xSs(data,omit,measure='DCM',radius=3,h5=0,h5out='slRSA_xSs.hdf5'):
 # Runs slClass for 1 subject # make to take kNN and halfpartiitoner, nfoldpartitioner, different clf
 ###############################################
 
-def slClass_1Ss(ds, omit=[], radius=3, clf = LinearCSVMC(), part = NFoldPartitioner(), scale_result=False):
+def slClass_1Ss(ds, omit=[], radius=3, clf = LinearCSVMC(), part = NFoldPartitioner()):
     '''
 
     Executes slClass on single subjects and returns ?avg accuracy per voxel?
 
-    ds:             pymvpa dsets for 1 subj
-    omit:           list of targets omitted from pymvpa datasets
-    radius:         sl radius, default 3
-    clf:            specify classifier
-    part:           specify partitioner
-    scale_result:   if True, scales the voxels that guess at chance to be 0
+    ds: pymvpa dsets for 1 subj
+    omit: list of targets omitted from pymvpa datasets
+    radius: sl radius, default 3
+    clf: specify classifier
+    part: specify partitioner
     '''        
 
     if __debug__:
@@ -343,17 +323,17 @@ def slClass_1Ss(ds, omit=[], radius=3, clf = LinearCSVMC(), part = NFoldPartitio
     print('Target |%s| omitted from analysis' % (omit))
 
     print('Beginning sl classification analysis...')
+    #part = NFoldPartitioner()
+    #clf = kNN(k=1, dfx=one_minus_correlation, voting='majority')
+    #clf = LinearCSVMC()
     cv=CrossValidation(clf, part, enable_ca=['stats'], errorfx=lambda p, t: np.mean(p == t))
     sl = sphere_searchlight(cv, radius=radius, postproc=mean_sample())
     slr = sl(ds)
-    if scale_result:
-        return sfs.reverse(slr).samples - (1.0/len(ds.UT))
-    else:
-        return sfs.reverse(slr).samples
+    return sfs.reverse(slr).samples - (1.0/len(ds.UT))
    
 
 ##############################################
-# Runs group level slClass
+# Runs group level slRSA with defined model
 ###############################################
 
 def slClass_nSs(data, omit=[], radius=3, clf = LinearCSVMC(), part = NFoldPartitioner(), h5 = 0, h5out = 'slSVM_nSs.hdf5'):
@@ -388,17 +368,56 @@ def slClass_nSs(data, omit=[], radius=3, clf = LinearCSVMC(), part = NFoldPartit
 
 
 #############################################
+# Runs SampleBySampleSimilarityCorrelation in ROI
+#############################################
+
+def roiSxS_1Ss(ds, targs_comps, sample_covariable, roi_mask_nii_path, omit = [], h5 = 0, h5out = 'roiSxS_1Ss.nii.gz'):
+    '''
+
+    Executes ROI SampleBySampleSimilarityCorrelation, returns corr coef (and optional p value)
+
+    
+    data: dictionary of pymvpa dsets per subj, indices being subjIDs
+    targs_comps: dict of trial by trial targets (keys) and their comparison targets (values) - **assumes non-interest targets omitted***
+    sample_covariable:  Name of the variable (sample attribute) with a value for each sample. The distance of each sample with the comparison_sample will be correlated with this variable.
+    roi_mask_nii_path: Nifti file location of binary mask for ROI
+    omit: list of targets omitted from pymvpa datasets; VERY IMPORTANT TO GET THIS RIGHT, should omit typically all targets besides the target of interest, and comparison_sample.
+    h5: 1 if you want to save hdf5 as well
+    h5out: hdf5 outfilename
+    
+    '''    
+   
+    for om in omit:
+        ds = ds[ds.sa.targets != om] # cut out omits
+        print('Target |%s| omitted from analysis' % (om))
+
+    data_m = mask_dset(ds, roi_mask_nii_path)
+    print('Dataset masked to shape: %s' % (str(data_m.shape)))
+ 
+    print('Beginning slSxS analysis...')
+    SxS = rsa_adv.SampleBySampleSimilarityCorrelation(targs_comps,sample_covariable)
+    sxsr = SxS(data_m)
+    #change slmap to right format
+    sxsr.samples[0],sxsr.samples[1]=np.arctanh(sxsr.samples[0]),1-sxsr.samples[1]
+    h5save(h5out,sxsr,compression=9)
+    print('h5 saved as:',h5out)
+
+    return sxsr    
+
+
+
+#############################################
 # Runs SampleBySampleSimilarityCorrelation through searchlight
 #############################################
 
-def slSxS_1Ss(ds, comparison_sample, sample_covariable, omit = [], radius = 3, h5 = 0, h5out = 'slSxS.hdf5'):
+def slSxS_1Ss(ds, targs_comps, sample_covariable, omit = [], radius = 3, h5 = 0, h5out = 'slSxS_1Ss.nii.gz'):
     '''
 
     Executes searchlight SampleBySampleSimilarityCorrelation, returns corr coef (and optional p value) per voxel
 
     
     data: dictionary of pymvpa dsets per subj, indices being subjIDs
-    comparison_sample:  Name of the sample (sa.targets target name) to be compared with each individual sample. Mean of this will be used. 
+    targs_comps: dict of trial by trial targets (keys) and their comparison targets (values) - **assumes non-interest targets omitted***
     sample_covariable:  Name of the variable (sample attribute) with a value for each sample. The distance of each sample with the comparison_sample will be correlated with this variable.
     omit: list of targets omitted from pymvpa datasets; VERY IMPORTANT TO GET THIS RIGHT, should omit typically all targets besides the target of interest, and comparison_sample.
     radius: sl radius, default 3
@@ -416,23 +435,18 @@ def slSxS_1Ss(ds, comparison_sample, sample_covariable, omit = [], radius = 3, h
         print('Target |%s| omitted from analysis' % (om))
  
     print('Beginning slSxS analysis...')
-    SxS = rsa.SampleBySampleSimilarityCorrelation(comparison_sample,sample_covariable)
+    SxS = rsa_adv.SampleBySampleSimilarityCorrelation(targs_comps,sample_covariable)
     sl = sphere_searchlight(SxS,radius=radius)
     slmap = sl(ds)
 
     print('slSxS complte with map of shape:',slmap.shape,'...p max/min:',slmap.samples[0].max(),slmap.samples[0].min(),'...r max/min',slmap.samples[1].max(),slmap.samples[1].min())
     
     #change slmap to right format
-    slmap.samples[0],slmap.samples[1]=np.arctanh(slmap.samples[0]),1-slmap.samples[1]    
+    slmap.samples[0],slmap.samples[1]=np.arctanh(slmap.samples[0]),1-slmap.samples[1]
     h5save(h5out,slmap,compression=9)
     print('h5 saved as:',h5out)
 
     return slmap    
-#    return slmap #not transforming to Zr or 1-p    
-#    if h5==1:
-#        h5save(h5out,np.array(1-slmap.samples[1],np.arctanh(slmap.samples[0])),compression=9)
-#        return np.array(1-slmap.samples[1],np.arctanh(slmap.samples[0]))
-#    else: return np.array(1-slmap.samples[1],np.arctanh(slmap.samples[0]))
 
 
 ##############################################
@@ -447,12 +461,12 @@ def slSxS_nSs(data, targs_comps, sample_covariable, omit=[], radius=3, h5 = 0, h
     ***assumes anything not in targs_comps is omitted***
 
     data: dictionary of pymvpa dsets per subj, indices being subjIDs
-    comparison_sample:  Dict of SxS targets (keys) and comparison targets (values)
+    targs_comps: dict of trial by trial targets (keys) and their comparison targets (values) - **assumes non-interest targets omitted***
     sample_covariable:  Name of the variable (sample attribute) with a value for each sample. The distance of each sample with the comparison_sample will be correlated with this variable.
     omit: list of targets omitted from pymvpa datasets; VERY IMPORTANT TO GET THIS RIGHT, should omit typically all targets besides the target of interest, and comparison_sample.
     radius: sl radius, default 3
-    h5: 1 if you want to save hdf5 as well
-    h5out: hdf5 outfilename
+    h5: 1 if want h5 per subj 
+    h5out: h outfilename suffix
     '''        
     
     print('slSxS initiated with...\n Ss: %s\ncomparison sample: %s\nsample covariable: %s\nomitting: %s\nradius: %s\nh5: %s\nh5out: %s' % (data.keys(),targs_comps,sample_covariable,omit,radius,h5,h5out))
@@ -462,7 +476,7 @@ def slSxS_nSs(data, targs_comps, sample_covariable, omit=[], radius=3, h5 = 0, h
     print('Beginning group level searchlight on %s Ss...' % (len(data)))
     for subjid,ds in data.iteritems():
         print('\Running slSxS for subject %s' % (subjid))
-        subj_data = slSxS_1Ss(ds,targs_comps,sample_covariable,omit,radius)
+        subj_data = slSxS_1Ss(ds,targs_comps,sample_covariable,omit,radius,h5,subjid+h5out)
         slrs[subjid] = subj_data
     print('slSxS complete for all subjects')
 
@@ -471,8 +485,7 @@ def slSxS_nSs(data, targs_comps, sample_covariable, omit=[], radius=3, h5 = 0, h
         return slrs
     else: return slrs
 
-
-###############################################
+##############################################
 # BDSM 
 ###############################################
 
@@ -516,6 +529,51 @@ def slBDSM_xSs(data,xSs_behav,targ_comp,radius=3,h5=0,h5out='bdsm_xSs.hdf5'):
         return slmap_bdsm
     else: return slmap_bdsm
 
+###############################################
+# BDSM double
+###############################################
+
+def slBDSM_xSs_d(data,xSs_behav1,targ_comp1,xSs_behav2,targ_comp2,radius=3,h5=0,h5out='bdsm_xSs.hdf5'):
+    '''
+    
+    Returns correlation of subject-level behav sim with subject-level neural sim between two targs
+
+    data: dictionary of pymvpa dsets per subj, indices being subjIDs
+    xSs_behav: Dictionary of behavioral value between subjects to be
+               correlated with intrasubject neural similarity (subjects are keys)
+    targ_comp: List of targets whose similarity is correlated with xSs_behav
+    radius: sl radius, default 3
+    h5: 1 saves hdf5 of output as well 
+    h5out: hdf5 outfilename
+    
+    '''   
+
+    print('xSs BDSM initiated with...\n Ss: %s \n targ_comp1: %s\n targ_comp2: %s\n radius: %s\nh5: %s\nh5out: %s' % (data.keys(),targ_comp1,targ_comp2,radius,h5,h5out))
+
+    if __debug__:
+        debug.active += ["SLC"]
+    
+    for i in data:
+        data[i] = mean_group_sample(['targets'])(data[i]) 
+    print('Dataset targets averaged with shapes:',[ds.shape for ds in data.values()])
+
+    group_data = None
+    for s in data.keys():
+         ds = data[s]
+         ds.sa['chunks'] = [s]*len(ds)
+         if group_data is None: group_data = ds
+         else: group_data.append(ds)
+    print('Group dataset ready including Ss: %s\nBeginning slBDSM:' % (np.unique(group_data.chunks)))
+    bdsm = rsa_adv.xss_BehavioralDissimilarity_double(xSs_behav1,targ_comp1,xSs_behav2,targ_comp2)
+    sl_bdsm = sphere_searchlight(bdsm,radius=radius)
+    slmap_bdsm = sl_bdsm(group_data)
+    print('Analysis complete with shape:',slmap_bdsm.shape)
+    if h5 == 1:
+        h5save(h5out,slmap_bdsm,compression=9)
+        return slmap_bdsm
+    else: return slmap_bdsm
+
+
 ##############################################
 # BDSM ROI
 ###############################################
@@ -533,12 +591,12 @@ def roiBDSM_xSs(data, xSs_behav, targ_comp, roi_mask_nii_path, h5 = 0,h5out = 'b
     h5: 1 saves hdf5 of output as well 
     h5out: hdf5 outfilename
     
-    '''
+    '''   
 
     print('xSs BDSM initiated with...\n Ss: %s \n targ_comp: %s\nroi_mask: %s\nh5: %s\nh5out: %s' % (data.keys(),targ_comp,roi_mask_nii_path,h5,h5out))
 
     for i in data:
-        data[i] = mean_group_sample(['targets'])(data[i])
+        data[i] = mean_group_sample(['targets'])(data[i]) 
     print('Dataset targets averaged with shapes:',[ds.shape for ds in data.values()])
 
     group_data = None
@@ -548,6 +606,7 @@ def roiBDSM_xSs(data, xSs_behav, targ_comp, roi_mask_nii_path, h5 = 0,h5out = 'b
          if group_data is None: group_data = ds
          else: group_data.append(ds)
     print('Group dataset ready including Ss: %s\nBeginning slBDSM:' % (np.unique(group_data.chunks)))
+
     group_data_m = mask_dset(group_data,roi_mask_nii_path)
     print('Group dataset masked, to size: %s' % (str(group_data_m.shape)))
 
@@ -579,12 +638,12 @@ def roiBDSM_xSs_d(data,xSs_behav1,targ_comp1,xSs_behav2,targ_comp2,roi_mask_nii_
     h5: 1 saves hdf5 of output as well 
     h5out: hdf5 outfilename
     
-    '''
+    '''   
 
     print('xSs BDSM initiated with...\n Ss: %s \n targ_comp1: %s\n targ_comp2: %s\n mask_roi: %s\nh5: %s\nh5out: %s' % (data.keys(),targ_comp1,targ_comp2,roi_mask_nii_path,h5,h5out))
 
     for i in data:
-        data[i] = mean_group_sample(['targets'])(data[i])
+        data[i] = mean_group_sample(['targets'])(data[i]) 
     print('Dataset targets averaged with shapes:',[ds.shape for ds in data.values()])
 
     group_data = None
@@ -608,166 +667,3 @@ def roiBDSM_xSs_d(data,xSs_behav1,targ_comp1,xSs_behav2,targ_comp2,roi_mask_nii_
         return bdsmr
     else: return bdsmr
 
-
-#########################################
-# load subj data
-#########################################
-
-
-def load_subj_data(study_dir, subj_list, file_suffix='.nii.gz', attr_filename=None, remove_invariants=False, hdf5_filename=None, mask=None):
-    ''' Loads in subject files and stores them in a data_dict.
-
-        Function returns [ {data}, and [Sample Attributes] ]
-        Keys    in the data_dict are the    subject filenames
-        Values  in the data_dict are the    pymvpa datasets
-
-        Keyword arguments:
-        study_dir           -- Study directory (should contain fMRI and attr files)
-        subj_list           -- List of subject IDs
-        file_suffix         -- What to add to subject IDs to complete filename
-        attr_filename       -- Filename for Sample Attributes within study dir
-        remove_invariants   -- Remove invariant features
-        hdf5_filename       -- If not none, saves hdf5 output with this name
-        mask                -- Specify an ROI mask for the data
-    '''
-
-
-    data_dict = {}
-    flags = {}
-    if attr_filename != None:
-        print( "Loading Sample Attributes file" )
-        attr_filepath   =   os.path.join( study_dir, attr_filename )
-        attr=SampleAttributes( os.path.join( study_dir, attr_filename ) )
-        flags['targets'] = attr.targets
-        flags['chunks']  = attr.chunks
-        print( "Done\n" )
-
-    if mask != None:
-        flags['mask']    = mask
-
-    for subj in subj_list:
-        subj_filename = ''.join(( subj, file_suffix) )
-        subj_filepath = os.path.join( study_dir, subj_filename  )
-        print( 'loading subject file: %s'   %   subj_filename   )
-        print( 'from: %s\n'                 %   study_dir       )
-
-
-        data_dict[subj] = fmri_dataset( subj_filepath, **flags )
-
-        if remove_invariants:
-            print( 'Removing invariant features' )
-            data_dict[subj] = data_dict[subj].remove_invariant_features()
-            print( 'Done\n' )
-
-    print( 'Subject data successfully loaded\n' )
-
-    if hdf5_filename != None:
-        hdf5_filename = os.path.join( study_dir, hdf5_filename )
-        print( 'Saving hdf5 file: %s' % hdf5_filename )
-        h5save( hdf5_filename, data_dict, compression=9 )
-        print( 'Done\n' )
-
-    return data_dict
-
-
-#############################################
-# Functions for classificaiton of ROIs
-#############################################
-
-def stdev_percat(cataccs):
-    '''
-	Returns dict of stdev per category b/w subjects
-	
-	cataccs: input is list of ACC per cat per subject
-	'''
-    accpercat,stdpercat={},{}
-    for i in cataccs[0].keys():
-        accpercat[i] = [cataccs[j][i] for j in range(len(cataccs))]
-    for i in accpercat.keys():
-        stdpercat[i] = np.std(accpercat[i])
-    return stdpercat
-
-def acc_percat(c_sum):
-    '''
-	Returns dict of ACC per category
-	
-	c_sum: summed confusion matrix across subject
-	'''
-    labels = c_sum.labels
-    #pulls in all cat rates
-    TPA,PA = c_sum.stats["TP"],c_sum.stats["P"]
-    ACC = {}
-    for i in range(len(labels)):
-        TP,P = float(TPA[i]),float(PA[i])
-        ACC[labels[i]]=(TP/P)
-    return ACC
-
-#classification 
-def classify(data):
-	'''
-	Returns results from classification of dataset by all targets in dataset
-	
-	data: dictionary of data, keys are subject Ids, values their datasets
-	
-	***NEED TO MAKE ARGS FOR CLASSIFIERS ETC***
-	'''
-    clf = LinearCSVMC([-1])
-    #clf = kNN(k=1, dfx=one_minus_correlation, voting='majority')
-    confusions=[]
-    cataccs=[]
-    for ds in data.itervalues():
-        cv = CrossValidation(clf,NFoldPartitioner(), enable_ca=['stats'])
-        errors = cv(ds)
-        confusions.append(cv.ca.stats)
-        cataccs.append(acc_percat(cv.ca.stats))
-    c_sum = pylab.sum(confusions)
-    ACC=acc_percat(c_sum)
-    stdev=stdev_percat(cataccs)
-    return {'c_sum': c_sum, 'ACC': ACC, 'stdev': stdev}
-
-def class_plotter(classdict,pout):
-	'''
-	Saves plots as .png files in current directory for both average confusion matrix and results histrograms
-	
-	classdict: output of classify function above
-	pout: output name for picture
-	'''
-    c_sum,ACC,stdev=classdict['c_sum'],classdict['ACC'],classdict['stdev']
-    #make confusion matrices
-    c_sum.plot()
-    pylab.plt.savefig('%s_confusion.png' % (pout))
-    pylab.clf() #clears confusion matrix
-    #make histograms
-    X,ymax = np.arange(len(ACC)),1
-    pylab.bar(X, ACC.values(), align='center', width=0.5, yerr=stdev.values(), ecolor="red")
-    pylab.xticks(X, ACC.keys())
-    pylab.ylim(0, ymax)
-    pylab.plt.savefig('%s_hist.png' % (pout),format='png')
-    pylab.clf() #clears hist
-    pylab.close()
-
-def normalize(data,method = 'featureByChunk'):
-	'''
-	Returns dataset normalized
-	
-	data = dictionary with data per subject, key is subject ID
-	method = specific normalization method: ['featureByChunk','featureZ','featureMD','sampleZ','sampleMD']
-	'''
-    if method == 'featureByChunk': 
-		for s in data:
-			zscore(data[s])
-	elif method == 'featureZ':
-		for s in data:
-			data[s].samples = (data[s].samples - np.mean(data[s],axis=0))/np.std(data[s],axis=0)
-	elif method == 'featureMD':
-		for s in data:
-			data[s].samples = data[s].samples - np.mean(data[s],axis=0)
-	elif method == 'sampleMD':
-		for s in data:
-			for i in range(len(data[s])):
-				data[s].samples[i] = (data[s][i].samples - np.mean(data[s][data[s].sa.targets == data[s][i].targets]))
-	elif method == 'sampleZ':
-		for s in data:
-			for i in range(len(data[s])):
-				data[s].samples[i] = (data[s][i].samples - np.mean(data[s][data[s].sa.targets == data[s][i].targets]))/np.std(data[s][data[s].sa.targets == data[s][i].targets])
-	return data
