@@ -1,5 +1,3 @@
-#7/19/15
-
 from mvpa2.suite import *
 import os
 import pylab as pylab
@@ -371,40 +369,64 @@ def slClass_nSs(data, omit=[], radius=3, clf = LinearCSVMC(), part = NFoldPartit
 # Runs SampleBySampleSimilarityCorrelation in ROI
 #############################################
 
-def roiSxS_1Ss(ds, targs_comps, sample_covariable, roi_mask_nii_path, omit = [], h5 = 0, h5out = 'roiSxS_1Ss.nii.gz'):
+def roiSxS_1Ss(ds, targs_comps, sample_covariable, roi_mask_nii_path):
     '''
 
     Executes ROI SampleBySampleSimilarityCorrelation, returns corr coef (and optional p value)
 
     
-    data: dictionary of pymvpa dsets per subj, indices being subjIDs
+    data: pymvpa dset
     targs_comps: dict of trial by trial targets (keys) and their comparison targets (values) - **assumes non-interest targets omitted***
     sample_covariable:  Name of the variable (sample attribute) with a value for each sample. The distance of each sample with the comparison_sample will be correlated with this variable.
     roi_mask_nii_path: Nifti file location of binary mask for ROI
-    omit: list of targets omitted from pymvpa datasets; VERY IMPORTANT TO GET THIS RIGHT, should omit typically all targets besides the target of interest, and comparison_sample.
-    h5: 1 if you want to save hdf5 as well
-    h5out: hdf5 outfilename
     
     '''    
    
-    for om in omit:
-        ds = ds[ds.sa.targets != om] # cut out omits
-        print('Target |%s| omitted from analysis' % (om))
-
     data_m = mask_dset(ds, roi_mask_nii_path)
     print('Dataset masked to shape: %s' % (str(data_m.shape)))
  
-    print('Beginning slSxS analysis...')
+    print('Beginning roiSxS analysis...')
     SxS = rsa_adv.SampleBySampleSimilarityCorrelation(targs_comps,sample_covariable)
     sxsr = SxS(data_m)
     #change slmap to right format
     sxsr.samples[0],sxsr.samples[1]=np.arctanh(sxsr.samples[0]),1-sxsr.samples[1]
-    h5save(h5out,sxsr,compression=9)
-    print('h5 saved as:',h5out)
 
     return sxsr    
 
 
+#############################################
+# Runs SampleBySampleSimilarityCorrelation in ROI per Subject
+#############################################
+
+def roiSxS_nSs(data, targs_comps, sample_covariable, roi_mask_nii_path, h5 = 0, h5out = 'roiSxS_nSs.hdf5'):
+    '''
+
+    Executes searchlight SampleBySampleSimilarityCorrelation, returns corr coef (and optional p value) per voxel
+
+    ***assumes anything not in targs_comps is omitted***
+
+    data: dictionary of pymvpa dsets per subj, indices being subjIDs
+    targs_comps: dict of trial by trial targets (keys) and their comparison targets (values) - **assumes non-interest targets omitted***
+    sample_covariable:  Name of the variable (sample attribute) with a value for each sample. The distance of each sample with the comparison_sample will be correlated with this variable.
+    h5: 1 if want h5 per subj 
+    h5out: h outfilename suffix
+    '''        
+    
+    print('roiSxS initiated with...\n Ss: %s\ncomparison sample: %s\nsample covariable: %s\nroi_mask: %s\nh5: %s\nh5out: %s' % (data.keys(),targs_comps,sample_covariable,roi_mask_nii_path,h5,h5out))
+
+    ### slSxS per subject ###
+    sxsr={} #dictionary to hold reuslts per subj
+    print('Beginning group level roi analysis on %s Ss...' % (len(data)))
+    for subjid,ds in data.iteritems():
+        print('\Running roiSxS for subject %s' % (subjid))
+        subj_data = roiSxS_1Ss(ds,targs_comps,sample_covariable,roi_mask_nii_path)
+        sxsr[subjid] = subj_data
+    print('roiSxS complete for all subjects')
+
+    if h5==1:
+        h5save(h5out,sxsr,compression=9)
+        return sxsr
+    else: return sxsr
 
 #############################################
 # Runs SampleBySampleSimilarityCorrelation through searchlight
