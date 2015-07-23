@@ -422,11 +422,13 @@ def roiSxS_nSs(data, targs_comps, sample_covariable, roi_mask_nii_path, h5 = 0, 
         subj_data = roiSxS_1Ss(ds,targs_comps,sample_covariable,roi_mask_nii_path)
         sxsr[subjid] = subj_data
     print('roiSxS complete for all subjects')
+    res = scipy.stats.ttest_1samp([s.samples[0][0] for s in sxsr.values()],0)
+    print('roi group level results: %s' % (str(res)))
 
     if h5==1:
-        h5save(h5out,sxsr,compression=9)
-        return sxsr
-    else: return sxsr
+        h5save(h5out,[res,sxsr],compression=9)
+        return [res,sxsr] 
+    else: return [res,sxsr]
 
 #############################################
 # Runs SampleBySampleSimilarityCorrelation through searchlight
