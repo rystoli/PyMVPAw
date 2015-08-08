@@ -95,3 +95,15 @@ def mask_dset(dset, mask):
     flatmask = ds.a.mapper.forward1(mask)
     return ds[:, flatmask != 0]
 
+def sa2csv(dset, salist):
+    '''
+    Saves csv with SA specified
+    NEED TO FINALIZE AND MAKE DICT ONE
+    '''
+    ds = np.asarray([[j.a.subjID,j.sa.chunks[0],j.sa.targets[0],j.sa.time_indices[0],j.sa.MD[0],j.sa.ACC[0]] for i,j in enumerate(colordata[s])])
+    np.savetxt("sa_dset.csv", ds, delimiter=",", fmt='%s')
+    t = {}
+    for s in colordata:
+        t[s] = np.asarray([[j.a.subjID,j.sa.chunks[0],j.sa.targets[0],j.sa.time_indices[0],j.sa.MD[0],j.sa.ACC[0]] for i,j in enumerate(colordata[s])])
+    np.savetxt("color_txt.csv", np.vstack(t.values()), delimiter=",", fmt='%s')
+
