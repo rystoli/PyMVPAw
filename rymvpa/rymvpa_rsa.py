@@ -1,11 +1,5 @@
-
-### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ##
-#
-#   See COPYING file distributed along with the PyMVPA package for the
-#   copyright and license terms.
-#
-### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ##
-"""Measure of consistency between dissimilarity matrices across chunks."""
+#version 8/19/15
+"""New RyMVPA measures of consistency between dissimilarity matrices across chunks."""
 
 __docformat__ = 'restructuredtext'
 

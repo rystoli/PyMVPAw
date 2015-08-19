@@ -1,3 +1,4 @@
+#version 8/19/15
 """
 rymvpa is a Python wrapper for pymvpa to enable faster 
 access to some pymvpa analyses, with sane defaults.
@@ -24,19 +25,19 @@ from rymvpa_searchlights import *
 from rymvpa_rois import *
 from rymvpa_datamanage import *
 
+
+
+#############################################################
+#TO DO:
+#############################################################
+
 #for integration still need to get everything to load proper, make omit optional...
-#how do we handle imports?
-
-
-
-##################################################
-# currently in progress of making this module with slRSA functions...
-
-# TO DO: 
 
 #*****   allow slRSA functions kwargs to use overlap_mgs instead of default mgs; issue may be that overlap_msg() requires omit submitted directly to it? nope, not issue just need to include?
 
-#move dataloading etc. to end in __main__; make dsms refresh take arguments
+#RSA ROI analyses
 
-# allow people to not use 'omit' argument
+#classification, train on one target, test on others
+#more flexible classification output
+
 
