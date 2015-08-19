@@ -1,5 +1,5 @@
 #version 8/19/15
-from rymvpa_importer import *
+from importer import *
 
 ##################################################
 

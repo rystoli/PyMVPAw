@@ -1,5 +1,5 @@
 #version 8/19/15
-from rymvpa_importer import *
+from importer import *
 #searchlight wrappers
 
 
@@ -30,8 +30,8 @@ def slRSA_m_1Ss(ds, model, omit, partial_dsm = None, radius=3, cmetric='pearson'
     print('Mean group sample computed at size:',ds.shape,'...with UT:',ds.UT)
 
     print('Beginning slRSA analysis...')
-    if partial_dsm == None: tdcm = rsa.TargetDissimilarityCorrelationMeasure_Partial(squareform(model), comparison_metric=cmetric)
-    elif partial_dsm != None: tdcm = rsa.TargetDissimilarityCorrelationMeasure_Partial(squareform(model), comparison_metric=cmetric, partial_dsm = squareform(partial_dsm))
+    if partial_dsm == None: tdcm = rsa_rymvpa.TargetDissimilarityCorrelationMeasure_Partial(squareform(model), comparison_metric=cmetric)
+    elif partial_dsm != None: tdcm = rsa_rymvpa.TargetDissimilarityCorrelationMeasure_Partial(squareform(model), comparison_metric=cmetric, partial_dsm = squareform(partial_dsm))
     sl = sphere_searchlight(tdcm,radius=radius)
     slmap = sl(ds)
     if partial_dsm == None:
@@ -39,7 +39,7 @@ def slRSA_m_1Ss(ds, model, omit, partial_dsm = None, radius=3, cmetric='pearson'
         return 1-slmap.samples[1],np.arctanh(slmap.samples[0])
     else:
         print('slRSA complete with map of shape:',slmap.shape,'...r max/min:',slmap.samples[0].max(),slmap.samples[0].min())
-        return 1-slmap.samples[1],np.arctanh(slmap.samples[0])
+        return np.arctanh(slmap.samples[0])
     
 
 ###############################################
@@ -243,7 +243,7 @@ def slSxS_1Ss(ds, targs_comps, sample_covariable, omit = [], radius = 3, h5 = 0,
         print('Target |%s| omitted from analysis' % (om))
  
     print('Beginning slSxS analysis...')
-    SxS = rsa_adv.SampleBySampleSimilarityCorrelation(targs_comps,sample_covariable)
+    SxS = rsa_rymvpa.SampleBySampleSimilarityCorrelation(targs_comps,sample_covariable)
     sl = sphere_searchlight(SxS,radius=radius)
     slmap = sl(ds)
 
@@ -328,7 +328,7 @@ def slBDSM_xSs(data,xSs_behav,targ_comp,radius=3,h5=0,h5out='bdsm_xSs.hdf5'):
          if group_data is None: group_data = ds
          else: group_data.append(ds)
     print('Group dataset ready including Ss: %s\nBeginning slBDSM:' % (np.unique(group_data.chunks)))
-    bdsm = rsa_adv.xss_BehavioralDissimilarity(xSs_behav,targ_comp)
+    bdsm = rsa_rymvpa.xss_BehavioralDissimilarity(xSs_behav,targ_comp)
     sl_bdsm = sphere_searchlight(bdsm,radius=radius)
     slmap_bdsm = sl_bdsm(group_data)
     print('Analysis complete with shape:',slmap_bdsm.shape)
@@ -372,7 +372,7 @@ def slBDSM_xSs_d(data,xSs_behav1,targ_comp1,xSs_behav2,targ_comp2,radius=3,h5=0,
          if group_data is None: group_data = ds
          else: group_data.append(ds)
     print('Group dataset ready including Ss: %s\nBeginning slBDSM:' % (np.unique(group_data.chunks)))
-    bdsm = rsa_adv.xss_BehavioralDissimilarity_double(xSs_behav1,targ_comp1,xSs_behav2,targ_comp2)
+    bdsm = rsa_rymvpa.xss_BehavioralDissimilarity_double(xSs_behav1,targ_comp1,xSs_behav2,targ_comp2)
     sl_bdsm = sphere_searchlight(bdsm,radius=radius)
     slmap_bdsm = sl_bdsm(group_data)
     print('Analysis complete with shape:',slmap_bdsm.shape)

@@ -1,5 +1,5 @@
 #version 8/19/15
-from rymvpa_importer import *
+from importer import *
 #ROI wrappers
 
 
@@ -25,7 +25,7 @@ def roiSxS_1Ss(ds, targs_comps, sample_covariable, roi_mask_nii_path):
     print('Dataset masked to shape: %s' % (str(data_m.shape)))
  
     print('Beginning roiSxS analysis...')
-    SxS = rsa_adv.SampleBySampleSimilarityCorrelation(targs_comps,sample_covariable)
+    SxS = rsa_rymvpa.SampleBySampleSimilarityCorrelation(targs_comps,sample_covariable)
     sxsr = SxS(data_m)
     #change slmap to right format
     sxsr.samples[0],sxsr.samples[1]=np.arctanh(sxsr.samples[0]),1-sxsr.samples[1]
@@ -106,7 +106,7 @@ def roiBDSM_xSs(data, xSs_behav, targ_comp, roi_mask_nii_path, h5 = 0,h5out = 'b
     group_data_m = mask_dset(group_data,roi_mask_nii_path)
     print('Group dataset masked, to size: %s' % (str(group_data_m.shape)))
 
-    bdsm = rsa_adv.xss_BehavioralDissimilarity(xSs_behav,targ_comp)
+    bdsm = rsa_rymvpa.xss_BehavioralDissimilarity(xSs_behav,targ_comp)
     roi_bdsm = bdsm(group_data_m)
     bdsmr = roi_bdsm.samples[0][0]
     print('Analysis complete with r: %s' % (str(bdsmr)))
@@ -153,7 +153,7 @@ def roiBDSM_xSs_d(data,xSs_behav1,targ_comp1,xSs_behav2,targ_comp2,roi_mask_nii_
     group_data_m = mask_dset(group_data,roi_mask_nii_path)
     print('Group dataset masked, to size: %s' % (str(group_data_m.shape)))
 
-    bdsm = rsa_adv.xss_BehavioralDissimilarity_double(xSs_behav1,targ_comp1,xSs_behav2,targ_comp2)
+    bdsm = rsa_rymvpa.xss_BehavioralDissimilarity_double(xSs_behav1,targ_comp1,xSs_behav2,targ_comp2)
     roi_bdsm = bdsm(group_data_m)
     bdsmr = roi_bdsm.samples[0][0]
     print('Analysis complete with r: %s' % (str(bdsmr)))
