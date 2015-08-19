@@ -21,9 +21,9 @@ else:
 
 del sys
 
-from rymvpa_searchlights import *
-from rymvpa_rois import *
-from rymvpa_datamanage import *
+from datamanage import *
+from roi_wraps import *
+from searchlight_wraps import *
 
 
 

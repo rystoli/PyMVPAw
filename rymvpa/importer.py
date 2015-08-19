@@ -5,5 +5,5 @@ import os
 import pylab as pylab
 import numpy as np
 import rsa as rsa
-import rymvpa_rsa as rsa_adv
+import rsa_rymvpa as rsa_adv
 from scipy.spatial.distance import pdist, squareform

@@ -1,20 +1,22 @@
-pymvpa_rs
+RyMVPA
 =========
 
-Edits &amp; additions to PyMVPA http://www.pymvpa.org/
+Wrappers &amp; additions to PyMVPA http://www.pymvpa.org/ (I swear we will pull request one day)
 
 ##Purpose
-These are personal edits and custom changes to PyMVPA as used by our lab. They include mostly (1) new functions / analyses, and (2) code that streamlines the process of using PyMVPA by packaging large amounts of code into easy functions.
+These are wrappers and additional methods for PyMVPA as used by our lab. Wrappers reduce various analyses and output to single functions, and provide an assortment of useful tools for managing pymvpa datasets. Additional methods at this point are primarily unique methods of representational similarity analysis.  
 
+*We use this system by first initializing a python environment with this module imported, but importantly, data loaded as a dictionary where keys are subject IDs and values subject PyMVPA datasets. Many of these functions are made to operate on these dictionaries and analyze all subjects at once. 
 ##Contents
 
 ###Files
-* dataload.py - Sets up initial environment in python, importing modules and readying data
-* dset_manage.py - functions handling datasets (e.g., saving them to nifti)
-* wrapit_pymvpa.py - conglomeration of functions for various purposes in classification and RSA (see below)
-* plotter.py - functions for quick plotting results
-* rsa.py - copy of RSA measure from PyMVPA with additional functions being added, e.g., partial correlation RSA
-* pcorr.py - partial correlation code
+* importer.py - imports necessary modules for others to run
+* rsa_rymvpa - our additional RSA methods (eg, do individual differences predict similarity of patterns between two conditions? and more)
+* datamanage.py - etc. functions for handling datasets (e.g., saving, masking, printing attributes to CSV, making ROI masks, and more)
+* searchlight_wraps.py - wrapper functions performing searchlights with various methods (classification, RSA, and our additional RSA methods)
+* roi_wraps.py - wrapper functions performing various methods on specified ROI via ROI mask (classificaiton, RSA, our additional RSA methods)
 
 ###Functions
-In progress
+See documentation nested in functions for now. 
+
+Thanks Zach!
