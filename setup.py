@@ -10,3 +10,9 @@ setup(name='rymvpa',
         url='https://github.com/rystoli/RyMVPA',
         packages=['rymvpa']
         )
+
+
+#install
+#pip install [this directory] 
+#update
+#pip install [this directory] -U

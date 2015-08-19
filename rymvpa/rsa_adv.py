@@ -1,3 +1,4 @@
+
 ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ##
 #
 #   See COPYING file distributed along with the PyMVPA package for the
@@ -9,7 +10,6 @@
 __docformat__ = 'restructuredtext'
 
 import numpy as np
-import pcorr
 from mvpa2.measures.base import Measure
 from mvpa2.datasets.base import Dataset
 from mvpa2.mappers.fx import mean_group_sample
@@ -17,6 +17,142 @@ from scipy.spatial.distance import pdist, squareform
 from scipy.stats import rankdata, pearsonr
 
 
+### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ##
+#         Partial correlation function for partial RSA... prob easier way
+### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ##
+
+def mean(X):
+    """
+    returns mean of vector X.
+    """
+    return(float(sum(X))/ len(X))
+ 
+def svar(X, xbar = None):
+    """
+    returns the sample variance of vector X.
+    xbar is sample mean of X.
+    """ 
+    if xbar is None: #fools had mean instead of xbar
+       xbar = mean(X)
+    S = sum([(x - xbar)**2 for x in X])
+    return S / (len(X) - 1)
+ 
+def corr(X,Y, xbar= None, xvar = None, ybar = None, yvar= None):
+    """
+    Computes correlation coefficient between X and Y.
+    returns None on error.
+    """
+    n = len(X)
+    if n != len(Y):
+       return 'size mismatch X/Y:',len(X),len(Y)
+    if xbar is None: xbar = mean(X)
+    if ybar is None: ybar = mean(Y)
+    if xvar is None: xvar = svar(X)
+    if yvar is None: yvar = svar(Y)
+ 
+    S = sum([(X[i] - xbar)* (Y[i] - ybar) for i in range(len(X))])
+    return S/((n-1)* np.sqrt(xvar* yvar))
+
+def pcf3(X,Y,Z):
+    """
+    Returns a dict of the partial correlation coefficients
+    r_XY|z , r_XZ|y, r_YZ|x 
+    """
+    xbar = mean(X)
+    ybar = mean(Y)
+    zbar = mean(Z)
+    xvar = svar(X)
+    print xvar
+    yvar = svar(Y)
+    print yvar
+    zvar = svar(Z)
+    print zvar
+    # computes pairwise simple correlations.
+    rxy  = corr(X,Y, xbar=xbar, xvar= xvar, ybar = ybar, yvar = yvar)
+    rxz  = corr(X,Z, xbar=xbar, xvar= xvar, ybar = zbar, yvar = zvar)
+    ryz  = corr(Y,Z, xbar=ybar, xvar= yvar, ybar = zbar, yvar = zvar)
+    rxy_z = (rxy - (rxz*ryz)) / np.sqrt((1 -rxz**2)*(1-ryz**2))
+    rxz_y = (rxz - (rxy*ryz)) / np.sqrt((1-rxy**2) *(1-ryz**2))
+    ryz_x = (ryz - (rxy*rxz)) / np.sqrt((1-rxy**2) *(1-rxz**2))
+    return {'rxy_z': rxy_z, 'rxz_y': rxz_y, 'ryz_x': ryz_x}
+
+
+### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ##
+# FANCY RSA FUNCTIONS
+### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ##
+
+class TargetDissimilarityCorrelationMeasure_Partial(Measure):
+    """
+    Target dissimilarity correlation `Measure`. Computes the correlation between
+    the dissimilarity matrix defined over the pairwise distances between the
+    samples of dataset and the target dissimilarity matrix.
+    """
+    
+    is_trained = True
+    """Indicate that this measure is always trained."""
+
+    def __init__(self, target_dsm, partial_dsm = None, pairwise_metric='correlation', 
+                    comparison_metric='pearson', center_data = False, 
+                    corrcoef_only = False, **kwargs):
+        """
+        Initialize
+
+        Parameters
+        ----------
+        dataset :           Dataset with N samples such that corresponding dissimilarity
+                            matrix has N*(N-1)/2 unique pairwise distances
+        target_dsm :        numpy array, length N*(N-1)/2. Target dissimilarity matrix
+        partial_dsm:        numpy array, length N*(N-1)/2. DSM to be partialled out
+                            Default: 'None'  
+        pairwise_metric :   To be used by pdist to calculate dataset DSM
+                            Default: 'correlation', 
+                            see scipy.spatial.distance.pdist for other metric options.
+        comparison_metric : To be used for comparing dataset dsm with target dsm
+                            Default: 'pearson'. Options: 'pearson' or 'spearman'
+        center_data :       Center data by subtracting mean column values from
+                            columns prior to calculating dataset dsm. 
+                            Default: False
+        corrcoef_only :     If true, return only the correlation coefficient
+                            (rho), otherwise return rho and probability, p. 
+                            Default: False
+        Returns
+        -------
+        Dataset :           Dataset contains the correlation coefficient (rho) only or
+                            rho plus p, when corrcoef_only is set to false.
+        """
+        # init base classes first
+        Measure.__init__(self, **kwargs)
+        if comparison_metric not in ['spearman','pearson']:
+            raise Exception("comparison_metric %s is not in "
+                            "['spearman','pearson']" % comparison_metric)
+        self.target_dsm = target_dsm
+        if comparison_metric == 'spearman':
+            self.target_dsm = rankdata(target_dsm)
+        self.pairwise_metric = pairwise_metric
+        self.comparison_metric = comparison_metric
+        self.center_data = center_data
+        self.corrcoef_only = corrcoef_only
+        self.partial_dsm = partial_dsm
+        if comparison_metric == 'spearman' and partial_dsm != None:
+            self.partial_dsm = rankdata(partial_dsm)
+
+    def _call(self,dataset):
+        data = dataset.samples
+        if self.center_data:
+            data = data - np.mean(data,0)
+        dsm = pdist(data,self.pairwise_metric)
+        if self.comparison_metric=='spearman':
+            dsm = rankdata(dsm)
+        if self.partial_dsm == None:
+            print self.partial_dsm
+            rho, p = pearsonr(dsm,self.target_dsm)
+            if self.corrcoef_only:
+                return Dataset(np.array([rho,]))
+            else: 
+                return Dataset(np.array([rho,p]))
+        elif self.partial_dsm != None:
+            rp = pcf3(dsm,self.target_dsm,self.partial_dsm)
+            return Dataset(np.array([rp['rxy_z']]))
 
 
 class xss_BehavioralDissimilarity(Measure):

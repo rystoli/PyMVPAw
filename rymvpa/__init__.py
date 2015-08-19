@@ -5,7 +5,7 @@ rymvpa is written entirely in Python and requires
 only a working copy of pymvpa.
 
 Git it at:
-https://github.com/rystoli/pymvpa_rs
+https://github.com/rystoli/RyMVPA
 """
 
 __version__ = "0.0.1"
@@ -20,4 +20,23 @@ else:
 
 del sys
 
-from wrapit_pymvpa import *
+from rymvpa_searchlights import *
+from rymvpa_rois import *
+from rymvpa_datamanage import *
+
+#for integration still need to get everything to load proper, make omit optional...
+#how do we handle imports?
+
+
+
+##################################################
+# currently in progress of making this module with slRSA functions...
+
+# TO DO: 
+
+#*****   allow slRSA functions kwargs to use overlap_mgs instead of default mgs; issue may be that overlap_msg() requires omit submitted directly to it? nope, not issue just need to include?
+
+#move dataloading etc. to end in __main__; make dsms refresh take arguments
+
+# allow people to not use 'omit' argument
+

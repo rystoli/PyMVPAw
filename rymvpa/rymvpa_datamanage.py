@@ -1,5 +1,14 @@
 import os
-from mvpa2.suite import map2nifti
+from rymvpa_importer import *
+
+##################################################
+
+def countDig(dig,arr):
+    '''Counts value 'dig' in 1D iterable arr'''
+    count = 0
+    for i in arr:
+        if i==dig: count+=1
+    return count
 
 def load_subj_data(study_dir, subj_list, file_suffix='.nii.gz', attr_filename=None, remove_invariants=False, hdf5_filename=None, mask=None):
     ''' Loads in subject files and stores them in a data_dict.
@@ -161,4 +170,121 @@ def sa2csv(dset, salist):
     for s in colordata:
         t[s] = np.asarray([[j.a.subjID,j.sa.chunks[0],j.sa.targets[0],j.sa.time_indices[0],j.sa.MD[0],j.sa.ACC[0]] for i,j in enumerate(colordata[s])])
     np.savetxt("color_txt.csv", np.vstack(t.values()), delimiter=",", fmt='%s')
+
+
+def overlap_mgs(ds,mgslist,omit):
+    '''
+    Returns pyMVPA dataset where samples are mean neural patterns per target category, where target categories can overlap - e.g., male=whitemale+blackmale, white=whitemale+whitefemale, etc.
+    
+    ds: single pymvpa dataset with targets already defined, and additional sample attributes identifying higher level target group memberships (eg, where 'target'=whitemale, 'sex'=male & 'race'=white
+    mgslist: list of sample attribute names for higher level target groups (those which overlap
+    omit: list of targets to be omitted from analyses
+    
+    NOTE: assumes mgs puts things in alphabetical order...
+    '''
+
+    #omissions
+    for om in omit:
+        ds = ds[ds.sa.targets != om] # cut out omits
+        print('Target |%s| omitted from analysis' % (om))
+
+    #create mean neural pattern per new target
+    premerge = {} # list of mgs results to be merged into new ds
+    for mgs in mgslist:
+        premerge[mgs] = mean_group_sample([mgs])(ds)
+        premerge[mgs].sa['targets'] = np.unique(premerge[mgs].sa[mgs]) #set correct targets
+
+    nds = vstack(premerge.values()) #new dataset
+    return mean_group_sample(['targets'])(nds)
+
+
+
+def clust2mask(clusts_infile, clustkeys, savenifti = False, outprefix = ''):
+    '''
+    Returns dict of cluster maks arrays per specified clusters/indices via afni cluster output; can also save these as separate nifti files to be used with fmri_dataset
+
+    clusts_infile = name of nifti file from afni where each cluster is saved as unique integer
+    clustkeys: dict of clusters to be separated out and saved, where keys are indices and values are names of ROIs (used in filenaming)
+    savenifti: default False, saves each clustmask as separate nifti file
+    outprefix: prefix for outfile name
+    '''
+
+    clusts = fmri_dataset(clusts_infile)
+    clustmasks = {}
+    for i,clust in clustkeys.iteritems():
+        clustmasks[clust] = clusts.samples[0] == i
+        if savenifti == True: slRSA2nifti(clusts.samples[0]==i,clusts,'%s%s.nii.gz' % (outprefix,clust))
+    return clustmasks
+
+
+
+
+
+
+def ndsmROI(ds,cmaskfile,omit,cmaskmaskfile=None,dsm2csv=False,csvname=None,mgslist=None):
+    '''
+    Returns neural DSM of ROI specified via mask file
+    
+    ds: pymvpa dataset
+    cmaskfile: nifti filename of ROI mask
+    omit: targets to be omitted from DSM
+    cmaskmaskfile: mask to be applied to ROI mask to make same size as neural ds; default None
+    dsm2csv: saves dsm as csv if True; default False
+    csvname: outfile name for csv; defualt None
+    mgslist: if want to use overlap_mgs, set list here
+    '''
+
+    cmask = fmri_dataset(cmaskfile,mask=cmaskmaskfile)
+    ds_masked = ds
+    ds_masked.samples *= cmask.samples
+    ds_masked = remove_invariant_features(ds_masked)
+    for om in omit:
+        ds_masked = ds_masked[ds_masked.sa.targets != om] # cut out omits
+        print('Target |%s| omitted from analysis' % (om))
+    if mgslist == None: ds_maskedUT = mean_group_sample(['targets'])(ds_masked) #make UT ds
+    elif mgslist != None:
+        print('overlap used instead')
+        ds_maskedUT = overlap_mgs(ds_masked,mgslist,omit)
+    print('shape:',ds_maskedUT.shape)
+    ndsm = squareform(pdist(ds_maskedUT.samples,'correlation'))
+    if dsm2csv == True: np.savetxt(csvname, ndsm, delimiter = ",")
+    return ndsm
+
+def roi2ndsm_nSs(data, cmaskfiles, omit, mask, h5=0, h5name = 'ndsms_persubj.hdf5',mgslist=None):
+    '''
+    Runs ndsmROI on data dictionary of subjects, for each ROI maskfile specified
+
+    data: datadict, keys subjids, values pymvpa dsets
+    cmaskfiles: list of cluster mask ROI file names +.nii.gz
+    omit: targets omitted
+    mask: mask filename +.nii.gz to equate datasets
+    h5: 1 saves full dict of dsms per ROI per subj as hdf5, default 0
+    h5name: name for hdf5
+    mgslist: if want to use overlap_mgs, set list here
+
+    to do: make call of ndsmROI more flexible
+    '''
+
+    data = h5load(os.path.join(homedir,dpath))
+    ndsms_persubj = {}
+    for ds in data:
+        ndsms_persubj[ds]={}
+        print('Starting ndsms for subj: %s' % (ds))
+        for cmfile in cmaskfiles:
+            temp_ds = data[ds].copy()
+            ndsms_persubj[ds][cmfile] = ndsmROI(temp_ds,cmfile,['omnF','pro'],mask,dsm2csv=True,csvname='%s_%s.csv' % (ds,cmfile),mgslist=mgslist)
+            print('ndsm added to dict and saved as %s_%s.csv' % (ds,cmfile))
+    if h5==1: h5save('ndsms_persubj.hdf5',ndsms_persubj,compression=9)
+    return ndsms_persubj
+
+def avg_ndsms(ndsms,cmaskfiles,h5=0,h5fname='avg_nDSMs.hdf5',savecsv=0):
+    '''
+    Returns dict of average nDSM per ROI in output of roi2ndsm_nSs - cmaskfiles - list of cmaksfiles
+    '''
+    avg_ndsms = dict([(cmask,np.mean([ndsms[subj][cmask] for subj in ndsms],axis=0)) for cmask in cmaskfiles])
+    if h5==1: h5save(h5fname,avg_ndsms,compression=9)
+    for dsm in avg_ndsms:
+        if savecsv == 1: np.savetxt('%s_avg_ndsm.csv' % (dsm), avg_ndsms[dsm], delimiter = ",")
+    return avg_ndsms
+
 
