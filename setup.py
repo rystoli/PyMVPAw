@@ -16,3 +16,9 @@ setup(name='rymvpa',
 #pip install [this directory] 
 #update
 #pip install [this directory] -U
+
+#update with git
+#git clone [address found on github]
+#git add -A #adds including new stuff, deletes old (see other options like -u)
+#git commit -am "notes"
+#git push origin master
