@@ -213,7 +213,7 @@ def clust2mask(clusts_infile, clustkeys, savenifti = False, outprefix = ''):
     clustmasks = {}
     for i,clust in clustkeys.iteritems():
         clustmasks[clust] = clusts.samples[0] == i
-        if savenifti == True: slRSA2nifti(clusts.samples[0]==i,clusts,'%s%s.nii.gz' % (outprefix,clust))
+        if savenifti == True: sl2nifti(clusts.samples[0]==i,clusts,'%s%s.nii.gz' % (outprefix,clust))
     return clustmasks
 
 
