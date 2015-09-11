@@ -3,6 +3,82 @@ from importer import *
 #ROI wrappers
 
 
+############################################
+# Runs RSA in ROI 
+############################################
+def roiRSA_1Ss(ds, roi_mask_nii_path, target_dsm, partial_dsm=None, cmetric='pearson'):
+    '''
+
+    Executes RSA on ROI with target_dm
+
+    ds = pymvpa dataset
+    roi_mask_nii_path = path to nifti of roi mask
+    target_dsm = primary DM for analysis
+    partial_dsm = DM to control for in analysis, optional
+    cmetric = comparison metric between target dm and neural dm
+    '''
+
+    data_m = mask_dset(ds, roi_mask_nii_path)
+    print('Dataset masked to shape: %s' % (str(data_m.shape)))
+ 
+    print('Beginning roiSxS analysis...')
+    ds = mean_group_sample(['targets'])(data_m)
+    if partial_dsm == None: tdcm = rsa_rymvpa.TargetDissimilarityCorrelationMeasure_Partial(squareform(target_dsm), comparison_metric=cmetric)
+    elif partial_dsm != None: tdcm = rsa_rymvpa.TargetDissimilarityCorrelationMeasure_Partial(squareform(target_dsm), comparison_metric=cmetric, partial_dsm = squareform(partial_dsm))
+
+    res = tdcm(ds)
+
+    if partial_dsm == None:
+        return 1-res.samples[1],np.arctanh(res.samples[0])
+    elif partial_dsm != None:
+        return np.arctanh(res.samples[0])
+
+#############################################
+# Runs RSA in ROI per subject
+#############################################
+
+def roiRSA_nSs(data, roi_mask_nii_path, target_dsm, partial_dsm=None, cmetric='pearson', h5 = 0, h5out = 'roiRSA_nSs.hdf5'):
+    '''
+
+    Executes RSA in ROI per subject in datadict 
+
+    data: dictionary of pymvpa dsets per subj, indices being subjIDs
+    roi_mask_nii_path = path to nifti of roi mask
+    target_dsm = primary DM for analysis
+    partial_dsm = DM to control for in analysis, optional
+    cmetric = comparison metric between target dm and neural dm
+    h5: 1 if want h5 per subj 
+    h5out: h outfilename suffix
+    '''
+
+    print('roiRSA initiated with...\n Ss: %s\nroi_mask: %s\nh5: %s\nh5out: %s' % (data.keys(),roi_mask_nii_path,h5,h5out))
+
+    ### roiRSA per subject ###
+    rsar={} #dictionary to hold reuslts per subj
+    print('Beginning group level roi analysis on %s Ss...' % (len(data)))
+
+    if partial_dsm == None:
+        for subjid,ds in data.iteritems():
+            print('\Running roiRSA for subject %s' % (subjid))
+            subj_data = roiRSA_1Ss(ds,roi_mask_nii_path,target_dsm,cmetric=cmetric)
+            rsar[subjid] = subj_data
+        print rsar
+        res = scipy.stats.ttest_1samp([s[0] for s in rsar.values()],0)
+    elif partial_dsm != None:
+        for subjid,ds in data.iteritems():
+            print('\Running roiRSA for subject %s' % (subjid))
+            subj_data = roiRSA_1Ss(ds,roi_mask_nii_path,target_dsm,partial_dsm=partial_dsm,cmetric=cmetric)
+            rsar[subjid] = subj_data
+        res = scipy.stats.ttest_1samp([s[0] for s in rsar.values()],0)
+    print('roiSxS complete for all subjects')
+    print('roi group level results: %s' % (str(res)))
+
+    if h5==1:
+        h5save(h5out,[res,rsar],compression=9)
+        return [res,rsar] 
+    else: return [res,rsar]
+
+
 
 #############################################
 # Runs SampleBySampleSimilarityCorrelation in ROI
