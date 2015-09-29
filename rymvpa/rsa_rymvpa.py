@@ -56,11 +56,8 @@ def pcf3(X,Y,Z):
     ybar = mean(Y)
     zbar = mean(Z)
     xvar = svar(X)
-    print xvar
     yvar = svar(Y)
-    print yvar
     zvar = svar(Z)
-    print zvar
     # computes pairwise simple correlations.
     rxy  = corr(X,Y, xbar=xbar, xvar= xvar, ybar = ybar, yvar = yvar)
     rxz  = corr(X,Z, xbar=xbar, xvar= xvar, ybar = zbar, yvar = zvar)
