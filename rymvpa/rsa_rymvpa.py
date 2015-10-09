@@ -9,6 +9,7 @@ from mvpa2.datasets.base import Dataset
 from mvpa2.mappers.fx import mean_group_sample
 from scipy.spatial.distance import pdist, squareform
 from scipy.stats import rankdata, pearsonr
+import statsmodels.api as sm
 
 
 ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ##
@@ -71,6 +72,82 @@ def pcf3(X,Y,Z):
 ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ##
 # FANCY RSA FUNCTIONS
 ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ##
+
+class TargetDissimilarityCorrelationMeasure_Regression(Measure):
+    """
+    Target dissimilarity correlation `Measure`. Computes the correlation between
+    the dissimilarity matrix defined over the pairwise distances between the
+    samples of dataset and the target dissimilarity matrix.
+    """
+    
+    is_trained = True
+    """Indicate that this measure is always trained."""
+
+    def __init__(self, target_dsm, control_dsms = None, pairwise_metric='correlation', 
+                    comparison_metric='pearson', center_data = False, 
+                    corrcoef_only = False, **kwargs):
+        """
+        Initialize
+
+        Parameters
+        ----------
+        dataset :           Dataset with N samples such that corresponding dissimilarity
+                            matrix has N*(N-1)/2 unique pairwise distances
+        target_dsm :        numpy array, length N*(N-1)/2. Target dissimilarity matrix
+                            this is the predictor who's results get mapped back
+        control_dsms:       list of numpy arrays, length N*(N-1)/2. DMs to be controlled for
+                            Default: 'None'  
+                            controlled for when getting results of target_dsm back
+        pairwise_metric :   To be used by pdist to calculate dataset DSM
+                            Default: 'correlation', 
+                            see scipy.spatial.distance.pdist for other metric options.
+        comparison_metric : To be used for comparing dataset dsm with target dsm
+                            Default: 'pearson'. Options: 'pearson' or 'spearman'
+        center_data :       Center data by subtracting mean column values from
+                            columns prior to calculating dataset dsm. 
+                            Default: False
+        corrcoef_only :     If true, return only the correlation coefficient
+                            (rho), otherwise return rho and probability, p. 
+                            Default: False
+        Returns
+        -------
+        Dataset :           Dataset contains the correlation coefficient (rho) only or
+                            rho plus p, when corrcoef_only is set to false.
+        """
+        # init base classes first
+        Measure.__init__(self, **kwargs)
+        if comparison_metric not in ['spearman','pearson']:
+            raise Exception("comparison_metric %s is not in "
+                            "['spearman','pearson']" % comparison_metric)
+        self.target_dsm = target_dsm
+        if comparison_metric == 'spearman':
+            self.target_dsm = rankdata(target_dsm)
+        self.pairwise_metric = pairwise_metric
+        self.comparison_metric = comparison_metric
+        self.center_data = center_data
+        self.corrcoef_only = corrcoef_only
+        self.control_dsms = control_dsms
+        if comparison_metric == 'spearman' and control_dsms != None:
+            self.control_dsms = [rankdata(dm) for dm in control_dsms]
+
+    def _call(self,dataset):
+        data = dataset.samples
+        if self.center_data:
+            data = data - np.mean(data,0)
+        dsm = pdist(data,self.pairwise_metric)
+        if self.comparison_metric=='spearman':
+            dsm = rankdata(dsm)
+        if self.control_dsms == None:
+            rho, p = pearsonr(dsm,self.target_dsm)
+            if self.corrcoef_only:
+                return Dataset(np.array([rho,]))
+            else: 
+                return Dataset(np.array([rho,p]))
+        elif self.control_dsms != None:
+            X = sm.add_constant(np.column_stack([self.target_dsm]+self.control_dsms))
+            res = sm.OLS(endog=dsm,exog=X).fit()
+            r = res.params[1]*(np.std(X[:,1])/np.std(dsm))
+            return Dataset(np.array([r]))
 
 class TargetDissimilarityCorrelationMeasure_Partial(Measure):
     """

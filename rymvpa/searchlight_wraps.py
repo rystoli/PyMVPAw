@@ -7,37 +7,40 @@ from importer import *
 # Runs slRSA with defined model for 1 subject
 ###############################################
 
-def slRSA_m_1Ss(ds, model, omit, partial_dsm = None, radius=3, cmetric='pearson'):
-    '''one subject
+def slRSA_m_1Ss(ds, model, partial_dsm = None, control_dsms = None, radius=3, cmetric='pearson'):
+    '''
 
     Executes slRSA on single subjects and returns tuple of arrays of 1-p's [0], and fisher Z transformed r's [1]
 
     ds: pymvpa dsets for 1 subj
     model: model DSM to be correlated with neural DSMs per searchlight center
-    partial_dsm: model DSM to be partialled out of model-neural DSM correlation
-    omit: list of targets omitted from pymvpa datasets
+    partial_dsm: DSM to be partialled out of model-neural DSM correlation
+    control_dsms: list of DSMs to be controlled for in multiple regression 
+                  which returns r of model DM predictor (converted from beta)                  
     radius: sl radius, default 3
     cmetric: default pearson, other optin 'spearman'
     '''        
 
-    if __debug__:
-        debug.active += ["SLC"]
+    if partial_dsm != None and control_dsms != None: raise NameError('Only set partial_dsm (partial model control) OR control_dsms (multiple regression model controls)')
 
-    for om in omit:
-        ds = ds[ds.sa.targets != om] # cut out omits
-        print('Target |%s| omitted from analysis' % (om))
+    if __debug__: debug.active += ["SLC"]
+
     ds = mean_group_sample(['targets'])(ds) #make UT ds
     print('Mean group sample computed at size:',ds.shape,'...with UT:',ds.UT)
 
     print('Beginning slRSA analysis...')
     if partial_dsm == None: tdcm = rsa_rymvpa.TargetDissimilarityCorrelationMeasure_Partial(squareform(model), comparison_metric=cmetric)
-    elif partial_dsm != None: tdcm = rsa_rymvpa.TargetDissimilarityCorrelationMeasure_Partial(squareform(model), comparison_metric=cmetric, partial_dsm = squareform(partial_dsm))
+    elif partial_dsm != None and control_dsms == None: tdcm = rsa_rymvpa.TargetDissimilarityCorrelationMeasure_Partial(squareform(model), comparison_metric=cmetric, partial_dsm = squareform(partial_dsm))
+    elif partial_dsm == None and control_dsms != None: tdcm = rsa_rymvpa.TargetDissimilarityCorrelationMeasure_Regression(squareform(model), comparison_metric=cmetric, control_dsms = [squareform(dm) for dm in control_dsms])
     sl = sphere_searchlight(tdcm,radius=radius)
     slmap = sl(ds)
-    if partial_dsm == None:
+    if partial_dsm == None and control_dsms == None:
         print('slRSA complete with map of shape:',slmap.shape,'...p max/min:',slmap.samples[0].max(),slmap.samples[0].min(),'...r max/min',slmap.samples[1].max(),slmap.samples[1].min())
         return 1-slmap.samples[1],np.arctanh(slmap.samples[0])
-    else:
+    elif partial_dsm != None and control_dsms == None:
+        print('slRSA complete with map of shape:',slmap.shape,'...r max/min:',slmap.samples[0].max(),slmap.samples[0].min())
+        return np.arctanh(slmap.samples[0])
+    elif partial_dsm == None and control_dsms != None:
         print('slRSA complete with map of shape:',slmap.shape,'...r max/min:',slmap.samples[0].max(),slmap.samples[0].min())
         return np.arctanh(slmap.samples[0])
     
@@ -46,7 +49,7 @@ def slRSA_m_1Ss(ds, model, omit, partial_dsm = None, radius=3, cmetric='pearson'
 # Runs group level slRSA with defined model
 ###############################################
 
-def slRSA_m_nSs(data, model, omit, radius=3, partial_dsm = None, cmetric = 'pearson', h5 = 0, h5out = 'slRSA_m_nSs.hdf5'):
+def slRSA_m_nSs(data, model, radius=3, partial_dsm = None, control_dsms = None, cmetric = 'pearson', h5 = 0, h5out = 'slRSA_m_nSs.hdf5'):
     '''
 
     Executes slRSA per subject in datadict (keys=subjIDs), returns dict of avg map fisher Z transformed r's and 1-p's per voxel arrays
@@ -54,22 +57,23 @@ def slRSA_m_nSs(data, model, omit, radius=3, partial_dsm = None, cmetric = 'pear
     data: dictionary of pymvpa dsets per subj, indices being subjIDs
     model: model DSM to be correlated with neural DSMs per searchlight center
     partial_dsm: model DSM to be partialled out of model-neural DSM correlation
-    omit: list of targets omitted from pymvpa datasets
+    control_dsms: list of DSMs to be controlled for in multiple regression 
+                  which returns r of model DM predictor (converted from beta)                  
     radius: sl radius, default 3
     cmetric: default pearson, other optin 'spearman'
     h5: 1 if you want to save hdf5 as well
     h5out: hdf5 outfilename
     '''        
     
-    print('Model slRSA initiated with...\n Ss: %s\nmodel shape: %s\nomitting: %s\nradius: %s\nh5: %s\nh5out: %s' % (data.keys(),model.shape,omit,radius,h5,h5out))
+    print('Model slRSA initiated with...\n Ss: %s\nmodel shape: %s\nradius: %s\nh5: %s\nh5out: %s' % (data.keys(),model.shape,radius,h5,h5out))
 
     ### slRSA per subject ###
     slr={'p': {}, 'r':{}} #dictionary to hold fzt r's and 1-p's
     print('Beginning group level searchlight on %s Ss...' % (len(data)))
     for subjid,ds in data.iteritems():
         print('\nPreparing slRSA for subject %s' % (subjid))
-        subj_data = slRSA_m_1Ss(ds,model,omit,partial_dsm=partial_dsm,cmetric=cmetric)
-        if partial_dsm == None: slr['p'][subjid],slr['r'][subjid] = subj_data[0],subj_data[1]
+        subj_data = slRSA_m_1Ss(ds,model,partial_dsm=partial_dsm,control_dsms=control_dsms,cmetric=cmetric)
+        if partial_dsm == None and control_dsms == None: slr['p'][subjid],slr['r'][subjid] = subj_data[0],subj_data[1]
         else: slr['r'][subjid] = subj_data
     print('slRSA complete for all subjects')
 
@@ -83,14 +87,13 @@ def slRSA_m_nSs(data, model, omit, radius=3, partial_dsm = None, cmetric = 'pear
 # across subjects RSA
 ###############################################
 
-def slRSA_xSs(data,omit,measure='DCM',radius=3,h5=0,h5out='slRSA_xSs.hdf5'):
+def slRSA_xSs(data,measure='DCM',radius=3,h5=0,h5out='slRSA_xSs.hdf5'):
     '''
     
     Returns avg map of xSs correlations of neural DSMs per searchlight sphere center
     - uses either Dissimilarity Consistency Measure or RSMMeasure, recommended DCM, as of now RSM seems unusual
 
     data: dictionary of pymvpa dsets per subj, indices being subjIDs
-    omit: list of targets omitted from pymvpa datasets
     radius: sl radius, default 3
     measure: specify if measure is 'DCM' or 'RSM'
     h5: 1 saves hdf5 of output as well 
@@ -99,20 +102,13 @@ def slRSA_xSs(data,omit,measure='DCM',radius=3,h5=0,h5out='slRSA_xSs.hdf5'):
     TO DO: should not return average, but full ds of pairs? - need to split ds's into different keys in datadict
     '''   
 
-    print('%s xSs slRSA initiated with...\n Ss: %s\nomitting: %s\nradius: %s\nh5: %s\nh5out: %s' % (measure,data.keys(),omit,radius,h5,h5out))
+    print('%s xSs slRSA initiated with...\n Ss: %s\nradius: %s\nh5: %s\nh5out: %s' % (measure,data.keys(),radius,h5,h5out))
 
-    if __debug__:
-        debug.active += ["SLC"]
+    if __debug__: debug.active += ["SLC"]
     
     for i in data:
         data[i] = mean_group_sample(['targets'])(data[i]) 
     print('Dataset targets averaged with shapes:',[ds.shape for ds in data.values()])
-
-    #omissions
-    print('Omitting targets: %s from data' % (omit))
-    for i in data:
-        for om in omit:
-            data[i] = data[i][data[i].sa.targets != om]
 
     if measure=='DCM':
         group_data = None
@@ -131,34 +127,23 @@ def slRSA_xSs(data,omit,measure='DCM',radius=3,h5=0,h5out='slRSA_xSs.hdf5'):
             return slmap_dcm
         else: return slmap_dcm
 
-################################
-# Classification
-
-
-# to do
-# make classifier an argument
-# make omit optional....
-#chance_level = 1.0 - (1.0 / len(ds.uniquetargets))
-# need to set targets beforehand if swithcing what they are
 
 ###############################################
-# Runs slClass for 1 subject # make to take kNN and halfpartiitoner, nfoldpartitioner, different clf
+# Runs slClass for 1 subject 
 ###############################################
 
-def slClass_1Ss(ds, omit=[], radius=3, clf = LinearCSVMC(), part = NFoldPartitioner()):
+def slClass_1Ss(ds, radius=3, clf = LinearCSVMC(), part = NFoldPartitioner()):
     '''
 
     Executes slClass on single subjects and returns ?avg accuracy per voxel?
 
     ds: pymvpa dsets for 1 subj
-    omit: list of targets omitted from pymvpa datasets
     radius: sl radius, default 3
     clf: specify classifier
     part: specify partitioner
     '''        
 
-    if __debug__:
-        debug.active += ["SLC"]
+    if __debug__: debug.active += ["SLC"]
 
     #dataprep
     remapper = ds.copy()
@@ -166,13 +151,8 @@ def slClass_1Ss(ds, omit=[], radius=3, clf = LinearCSVMC(), part = NFoldPartitio
     sfs = StaticFeatureSelection(slicearg=inv_mask)
     sfs.train(remapper)
     ds = remove_invariant_features(ds)
-    ds = omit_targets(ds,omit)
-    print('Target |%s| omitted from analysis' % (omit))
 
     print('Beginning sl classification analysis...')
-    #part = NFoldPartitioner()
-    #clf = kNN(k=1, dfx=one_minus_correlation, voting='majority')
-    #clf = LinearCSVMC()
     cv=CrossValidation(clf, part, enable_ca=['stats'], errorfx=lambda p, t: np.mean(p == t))
     sl = sphere_searchlight(cv, radius=radius, postproc=mean_sample())
     slr = sl(ds)
@@ -183,7 +163,7 @@ def slClass_1Ss(ds, omit=[], radius=3, clf = LinearCSVMC(), part = NFoldPartitio
 # Runs group level slRSA with defined model
 ###############################################
 
-def slClass_nSs(data, omit=[], radius=3, clf = LinearCSVMC(), part = NFoldPartitioner(), h5 = 0, h5out = 'slSVM_nSs.hdf5'):
+def slClass_nSs(data, radius=3, clf = LinearCSVMC(), part = NFoldPartitioner(), h5 = 0, h5out = 'slSVM_nSs.hdf5'):
     '''
 
     Executes slClass per subject in datadict (keys=subjIDs), returns ?avg accuracy per voxel?
@@ -197,14 +177,14 @@ def slClass_nSs(data, omit=[], radius=3, clf = LinearCSVMC(), part = NFoldPartit
     h5out: hdf5 outfilename
     '''        
     
-    print('slClass initiated with...\n Ss: %s\nomitting: %s\nradius: %s\nh5: %s\nh5out: %s' % (data.keys(),omit,radius,h5,h5out))
+    print('slClass initiated with...\n Ss: %s\nradius: %s\nh5: %s\nh5out: %s' % (data.keys(),radius,h5,h5out))
 
     ### slClass per subject ###
     slrs={} #dictionary to hold slSVM reuslts per subj
     print('Beginning group level searchlight on %s Ss...' % (len(data)))
     for subjid,ds in data.iteritems():
         print('\Running slClass for subject %s' % (subjid))
-        subj_data = slClass_1Ss(ds,omit,radius,clf,part)
+        subj_data = slClass_1Ss(ds,radius,clf,part)
         slrs[subjid] = subj_data
     print('slClass complete for all subjects')
 
@@ -235,9 +215,9 @@ def slSxS_1Ss(ds, targs_comps, sample_covariable, omit = [], radius = 3, h5 = 0,
     TO DO: probably better way to keep wanted targets in dset and omit others with having to specify omits...
     '''    
    
-    if __debug__:
-        debug.active += ["SLC"]
-
+    if __debug__: debug.active += ["SLC"]
+    
+    print('MAKE SURE you have omitted targets not specified in the analysis!')
     for om in omit:
         ds = ds[ds.sa.targets != om] # cut out omits
         print('Target |%s| omitted from analysis' % (om))

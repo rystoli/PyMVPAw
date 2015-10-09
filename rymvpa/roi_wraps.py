@@ -7,7 +7,7 @@ from datamanage import *
 ############################################
 # Runs RSA in ROI 
 ############################################
-def roiRSA_1Ss(ds, roi_mask_nii_path, target_dsm, partial_dsm=None, cmetric='pearson'):
+def roiRSA_1Ss(ds, roi_mask_nii_path, target_dsm, partial_dsm=None, control_dsms=None, cmetric='pearson'):
     '''
 
     Executes RSA on ROI with target_dm
@@ -15,30 +15,34 @@ def roiRSA_1Ss(ds, roi_mask_nii_path, target_dsm, partial_dsm=None, cmetric='pea
     ds = pymvpa dataset
     roi_mask_nii_path = path to nifti of roi mask
     target_dsm = primary DM for analysis
-    partial_dsm = DM to control for in analysis, optional
+    partial_dsm = DM to control for in a partial correlation
+    control_dsms = list of DMs to control for in a multiple regression
     cmetric = comparison metric between target dm and neural dm
     '''
+
+    if partial_dsm != None and control_dsms != None: raise NameError('Only set partial_dsm (partial model control) OR control_dsms (multiple regression model controls)')
 
     data_m = mask_dset(ds, roi_mask_nii_path)
     print('Dataset masked to shape: %s' % (str(data_m.shape)))
  
     print('Beginning roiSxS analysis...')
     ds = mean_group_sample(['targets'])(data_m)
-    if partial_dsm == None: tdcm = rsa_rymvpa.TargetDissimilarityCorrelationMeasure_Partial(squareform(target_dsm), comparison_metric=cmetric)
-    elif partial_dsm != None: tdcm = rsa_rymvpa.TargetDissimilarityCorrelationMeasure_Partial(squareform(target_dsm), comparison_metric=cmetric, partial_dsm = squareform(partial_dsm))
+    if partial_dsm == None and control_dsms == None: tdcm = rsa_rymvpa.TargetDissimilarityCorrelationMeasure_Partial(squareform(target_dsm), comparison_metric=cmetric)
+    elif partial_dsm != None and control_dsms == None: tdcm = rsa_rymvpa.TargetDissimilarityCorrelationMeasure_Partial(squareform(target_dsm), comparison_metric=cmetric, partial_dsm = squareform(partial_dsm))
+    elif partial_dsm == None and control_dsms != None: tdcm = rsa_rymvpa.TargetDissimilarityCorrelationMeasure_Regression(squareform(target_dsm), comparison_metric=cmetric, control_dsms = [squareform(dm) for dm in control_dsms])
 
     res = tdcm(ds)
 
-    if partial_dsm == None:
+    if partial_dsm == None and control_dsms == None:
         return 1-res.samples[1],np.arctanh(res.samples[0])
-    elif partial_dsm != None:
+    else:
         return np.arctanh(res.samples[0])
 
 #############################################
 # Runs RSA in ROI per subject
 #############################################
 
-def roiRSA_nSs(data, roi_mask_nii_path, target_dsm, partial_dsm=None, cmetric='pearson', h5 = 0, h5out = 'roiRSA_nSs.hdf5'):
+def roiRSA_nSs(data, roi_mask_nii_path, target_dsm, partial_dsm=None, control_dsms=None, cmetric='pearson', h5 = 0, h5out = 'roiRSA_nSs.hdf5'):
     '''
 
     Executes RSA in ROI per subject in datadict 
@@ -47,6 +51,7 @@ def roiRSA_nSs(data, roi_mask_nii_path, target_dsm, partial_dsm=None, cmetric='p
     roi_mask_nii_path = path to nifti of roi mask
     target_dsm = primary DM for analysis
     partial_dsm = DM to control for in analysis, optional
+    control_dsms = list of DMs to control for in a multiple regression
     cmetric = comparison metric between target dm and neural dm
     h5: 1 if want h5 per subj 
     h5out: h outfilename suffix
@@ -58,20 +63,12 @@ def roiRSA_nSs(data, roi_mask_nii_path, target_dsm, partial_dsm=None, cmetric='p
     rsar={} #dictionary to hold reuslts per subj
     print('Beginning group level roi analysis on %s Ss...' % (len(data)))
 
-    if partial_dsm == None:
-        for subjid,ds in data.iteritems():
-            print('\Running roiRSA for subject %s' % (subjid))
-            subj_data = roiRSA_1Ss(ds,roi_mask_nii_path,target_dsm,cmetric=cmetric)
-            rsar[subjid] = subj_data
-        print rsar
-        res = scipy.stats.ttest_1samp([s[0] for s in rsar.values()],0)
-    elif partial_dsm != None:
-        for subjid,ds in data.iteritems():
-            print('\Running roiRSA for subject %s' % (subjid))
-            subj_data = roiRSA_1Ss(ds,roi_mask_nii_path,target_dsm,partial_dsm=partial_dsm,cmetric=cmetric)
-            rsar[subjid] = subj_data
-        res = scipy.stats.ttest_1samp([s[0] for s in rsar.values()],0)
-    print('roiSxS complete for all subjects')
+    for subjid,ds in data.iteritems():
+        print('\Running roiRSA for subject %s' % (subjid))
+        subj_data = roiRSA_1Ss(ds,roi_mask_nii_path,target_dsm,partial_dsm=partial_dsm,control_dsms=control_dsms,cmetric=cmetric)
+        rsar[subjid] = subj_data
+    print rsar
+    res = scipy.stats.ttest_1samp([s[0] for s in rsar.values()],0)
     print('roi group level results: %s' % (str(res)))
 
     if h5==1:
