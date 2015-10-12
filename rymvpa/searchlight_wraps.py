@@ -29,7 +29,7 @@ def slRSA_m_1Ss(ds, model, partial_dsm = None, control_dsms = None, radius=3, cm
     print('Mean group sample computed at size:',ds.shape,'...with UT:',ds.UT)
 
     print('Beginning slRSA analysis...')
-    if partial_dsm == None: tdcm = rsa_rymvpa.TargetDissimilarityCorrelationMeasure_Partial(squareform(model), comparison_metric=cmetric)
+    if partial_dsm == None and control_dsms == None: tdcm = rsa_rymvpa.TargetDissimilarityCorrelationMeasure_Partial(squareform(model), comparison_metric=cmetric)
     elif partial_dsm != None and control_dsms == None: tdcm = rsa_rymvpa.TargetDissimilarityCorrelationMeasure_Partial(squareform(model), comparison_metric=cmetric, partial_dsm = squareform(partial_dsm))
     elif partial_dsm == None and control_dsms != None: tdcm = rsa_rymvpa.TargetDissimilarityCorrelationMeasure_Regression(squareform(model), comparison_metric=cmetric, control_dsms = [squareform(dm) for dm in control_dsms])
     sl = sphere_searchlight(tdcm,radius=radius)
