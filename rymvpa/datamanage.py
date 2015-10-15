@@ -220,74 +220,29 @@ def clust2mask(clusts_infile, clustkeys, savenifti = False, outprefix = ''):
     return clustmasks
 
 
-
-
-
-
-def ndsmROI(ds,cmaskfile,omit,cmaskmaskfile=None,dsm2csv=False,csvname=None,mgslist=None):
+def roi2ndm_1Ss(ds,mask):
     '''
     Returns neural DSM of ROI specified via mask file
     
     ds: pymvpa dataset
-    cmaskfile: nifti filename of ROI mask
-    omit: targets to be omitted from DSM
-    cmaskmaskfile: mask to be applied to ROI mask to make same size as neural ds; default None
-    dsm2csv: saves dsm as csv if True; default False
-    csvname: outfile name for csv; defualt None
-    mgslist: if want to use overlap_mgs, set list here
+    mask: nifti filename of ROI mask
     '''
 
-    cmask = fmri_dataset(cmaskfile,mask=cmaskmaskfile)
-    ds_masked = ds
-    ds_masked.samples *= cmask.samples
-    ds_masked = remove_invariant_features(ds_masked)
-    for om in omit:
-        ds_masked = ds_masked[ds_masked.sa.targets != om] # cut out omits
-        print('Target |%s| omitted from analysis' % (om))
-    if mgslist == None: ds_maskedUT = mean_group_sample(['targets'])(ds_masked) #make UT ds
-    elif mgslist != None:
-        print('overlap used instead')
-        ds_maskedUT = overlap_mgs(ds_masked,mgslist,omit)
-    print('shape:',ds_maskedUT.shape)
-    ndsm = squareform(pdist(ds_maskedUT.samples,'correlation'))
-    if dsm2csv == True: np.savetxt(csvname, ndsm, delimiter = ",")
-    return ndsm
+    ds = remove_invariant_features(mask_dset(ds,mask))
+    mgs = mean_group_sample(['targets'])(ds)
+    ndm = squareform(pdist(mgs.samples,'correlation'))
+    return ndm
 
-def roi2ndsm_nSs(data, cmaskfiles, omit, mask, h5=0, h5name = 'ndsms_persubj.hdf5',mgslist=None):
+def roi2ndm_nSs(data, mask, avgndm = False):
     '''
-    Runs ndsmROI on data dictionary of subjects, for each ROI maskfile specified
+    Runs ndsmROI on data dictionary of subjects
 
     data: datadict, keys subjids, values pymvpa dsets
-    cmaskfiles: list of cluster mask ROI file names +.nii.gz
-    omit: targets omitted
-    mask: mask filename +.nii.gz to equate datasets
-    h5: 1 saves full dict of dsms per ROI per subj as hdf5, default 0
-    h5name: name for hdf5
-    mgslist: if want to use overlap_mgs, set list here
-
-    to do: make call of ndsmROI more flexible
+    mask: mask filename
+    avgndm: if True, returns average ndm across subjects instead of per subject
     '''
 
-    data = h5load(os.path.join(homedir,dpath))
-    ndsms_persubj = {}
-    for ds in data:
-        ndsms_persubj[ds]={}
-        print('Starting ndsms for subj: %s' % (ds))
-        for cmfile in cmaskfiles:
-            temp_ds = data[ds].copy()
-            ndsms_persubj[ds][cmfile] = ndsmROI(temp_ds,cmfile,['omnF','pro'],mask,dsm2csv=True,csvname='%s_%s.csv' % (ds,cmfile),mgslist=mgslist)
-            print('ndsm added to dict and saved as %s_%s.csv' % (ds,cmfile))
-    if h5==1: h5save('ndsms_persubj.hdf5',ndsms_persubj,compression=9)
-    return ndsms_persubj
-
-def avg_ndsms(ndsms,cmaskfiles,h5=0,h5fname='avg_nDSMs.hdf5',savecsv=0):
-    '''
-    Returns dict of average nDSM per ROI in output of roi2ndsm_nSs - cmaskfiles - list of cmaksfiles
-    '''
-    avg_ndsms = dict([(cmask,np.mean([ndsms[subj][cmask] for subj in ndsms],axis=0)) for cmask in cmaskfiles])
-    if h5==1: h5save(h5fname,avg_ndsms,compression=9)
-    for dsm in avg_ndsms:
-        if savecsv == 1: np.savetxt('%s_avg_ndsm.csv' % (dsm), avg_ndsms[dsm], delimiter = ",")
-    return avg_ndsms
-
+    ndsms = dict( (s,roi2ndm_1Ss(data[s],mask)) for s in data.keys())
+    if avgndm == True: return np.mean(ndsms.values(),axis=0)
+    else: return ndsms
 
