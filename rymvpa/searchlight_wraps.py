@@ -42,7 +42,7 @@ def slRSA_m_1Ss(ds, model, partial_dsm = None, control_dsms = None, radius=3, cm
         return np.arctanh(slmap.samples[0])
     elif partial_dsm == None and control_dsms != None:
         print('slRSA complete with map of shape:',slmap.shape,'...r max/min:',slmap.samples[0].max(),slmap.samples[0].min())
-        return np.arctanh(slmap.samples[0])
+        return slmap.samples[0]
     
 
 ###############################################

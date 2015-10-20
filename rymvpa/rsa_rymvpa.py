@@ -146,8 +146,8 @@ class TargetDissimilarityCorrelationMeasure_Regression(Measure):
         elif self.control_dsms != None:
             X = sm.add_constant(np.column_stack([self.target_dsm]+self.control_dsms))
             res = sm.OLS(endog=dsm,exog=X).fit()
-            r = res.params[1]*(np.std(X[:,1])/np.std(dsm))
-            return Dataset(np.array([r]))
+            b = res.params[1]
+            return Dataset(np.array([b]))
 
 class TargetDissimilarityCorrelationMeasure_Partial(Measure):
     """
