@@ -6,7 +6,7 @@ Wrappers &amp; additions to PyMVPA http://www.pymvpa.org/ (I swear we will pull 
 ##Purpose
 These are wrappers and additional methods for PyMVPA as used by our lab. Wrappers reduce various analyses and output to single functions, and provide an assortment of useful tools for managing pymvpa datasets. Additional methods at this point are primarily unique methods of representational similarity analysis.  
 
-*We use this system by first initializing a python environment with this module imported, but importantly, data loaded as a dictionary where keys are subject IDs and values subject PyMVPA datasets. Many of these functions are made to operate on these dictionaries and analyze all subjects at once. 
+*We use this system by first initializing a python environment with this module imported, but importantly, data loaded as a dictionary where keys are subject IDs and values subject PyMVPA datasets ('datadicts'). Many of these functions are made to operate on these dictionaries and analyze all subjects at once. 
 ##Contents
 
 ###Files

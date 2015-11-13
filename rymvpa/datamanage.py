@@ -175,6 +175,21 @@ def sa2csv(dset, salist):
     np.savetxt("color_txt.csv", np.vstack(t.values()), delimiter=",", fmt='%s')
 
 
+def sxs2dset(ds,mask,targs_comps):    
+    '''
+    Creates numpy dset (array) with targ similarity per sample
+
+    ds = pymvpa dset
+    mask: path to nifti binary mask file
+    targs_comps: dict, keys targets, values comparison targs
+    '''
+    ds = mask_dset(ds,mask)
+    comp_samps = mean_group_sample(['targets'])(ds)
+    for om in targs_comps.values():
+        ds = ds[ds.sa.targets != om]
+    r = np.array([(s.sa.chunks[0],s.sa.time_indices[0],s.sa.targets[0],pearsonr(s.samples[0],comp_samps[comp_samps.sa.targets == targs_comps[s.sa.targets[0]]].samples[0])[0]) for s in ds])
+    return r 
+
 def overlap_mgs(ds,mgslist,omit):
     '''
     Returns pyMVPA dataset where samples are mean neural patterns per target category, where target categories can overlap - e.g., male=whitemale+blackmale, white=whitemale+whitefemale, etc.
