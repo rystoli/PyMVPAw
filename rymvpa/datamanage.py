@@ -131,7 +131,7 @@ def select_targets(ds, select):
     select: list of targets to be selected
     '''     
 
-    omit= [x for x in ds.sa.targest if not (x in select)]
+    omit= [x for x in ds.sa.targets if not (x in select)]
     return omit_targets(ds, omit)
 
 def select_targets_data(data, select):

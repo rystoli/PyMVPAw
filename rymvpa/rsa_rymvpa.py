@@ -83,9 +83,9 @@ class TargetDissimilarityCorrelationMeasure_Regression(Measure):
     is_trained = True
     """Indicate that this measure is always trained."""
 
-    def __init__(self, target_dsm, control_dsms = None, pairwise_metric='correlation', 
-                    comparison_metric='pearson', center_data = False, 
-                    corrcoef_only = False, **kwargs):
+    def __init__(self, target_dsm, control_dsms = None, resid = False,  
+                    pairwise_metric='correlation', comparison_metric='pearson', 
+                    center_data = False, corrcoef_only = False, **kwargs):
         """
         Initialize
 
@@ -98,6 +98,8 @@ class TargetDissimilarityCorrelationMeasure_Regression(Measure):
         control_dsms:       list of numpy arrays, length N*(N-1)/2. DMs to be controlled for
                             Default: 'None'  
                             controlled for when getting results of target_dsm back
+        resid:              Set to True to return residuals to searchlight center for 
+                            smoothing estimation, default to False
         pairwise_metric :   To be used by pdist to calculate dataset DSM
                             Default: 'correlation', 
                             see scipy.spatial.distance.pdist for other metric options.
@@ -129,6 +131,7 @@ class TargetDissimilarityCorrelationMeasure_Regression(Measure):
         self.control_dsms = control_dsms
         if comparison_metric == 'spearman' and control_dsms != None:
             self.control_dsms = [rankdata(dm) for dm in control_dsms]
+        self.resid = resid
 
     def _call(self,dataset):
         data = dataset.samples
@@ -146,7 +149,8 @@ class TargetDissimilarityCorrelationMeasure_Regression(Measure):
         elif self.control_dsms != None:
             X = sm.add_constant(np.column_stack([self.target_dsm]+self.control_dsms))
             res = sm.OLS(endog=dsm,exog=X).fit()
-            b = res.params[1]
+            if self.resid == True: b = np.sum(res.resid**2)
+            elif self.resid == False: b = res.params[1]
             return Dataset(np.array([b]))
 
 class TargetDissimilarityCorrelationMeasure_Partial(Measure):
