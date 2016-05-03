@@ -30,7 +30,7 @@ def roi_pairsim_xSs(data, roi_mask_nii_path, pairs):
     '''
     
     print('Calculating pairsim per n = %s, pairs = %s, in mask = %s' % (len(data),pairs,roi_mask_nii_path))
-    pairsim_dict = dict((s,roi_cultrace(data[s], roi_mask_nii_path, pairs)) for s in data)
+    pairsim_dict = dict((s,roi_pairsim_1Ss(data[s], roi_mask_nii_path, pairs)) for s in data)
     return pairsim_dict
 
 
