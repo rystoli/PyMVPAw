@@ -3,6 +3,36 @@ from importer import *
 from datamanage import *
 #ROI wrappers
 
+############################################
+# Target pair similarity calculations
+############################################
+def roi_pairsim_1Ss(ds, roi_mask_nii_path, pairs):
+    '''
+    Calculates sim for all defined pairs and returns dict of pair sim values (within roi)
+
+    ds = pymvpa dataset
+    roi_mask_nii_path = path to nifti of roi mask
+    pairs = list of lists (pairs) of target names
+    '''
+
+    data_m = mask_dset(ds, roi_mask_nii_path) 
+    ds = mean_group_sample(['targets'])(data_m)
+    pairsim = dict((pair[0]+'-'+pair[1],pearsonr(ds[ds.sa.targets == pair[0]].samples[0], ds[ds.sa.targets == pair[1]].samples[0])[0]) for pair in pairs)
+    return pairsim
+
+def roi_pairsim_xSs(data, roi_mask_nii_path, pairs):
+    '''
+    Calculates sim for all defined pairs and returns dict of pair sim values (within roi, per subject)
+
+    ds = pymvpa dataset
+    roi_mask_nii_path = path to nifti of roi mask
+    pairs = list of lists (pairs) of target names
+    '''
+    
+    print('Calculating pairsim per n = %s, pairs = %s, in mask = %s' % (len(data),pairs,roi_mask_nii_path))
+    pairsim_dict = dict((s,roi_cultrace(data[s], roi_mask_nii_path, pairs)) for s in data)
+    return pairsim_dict
+
 
 ############################################
 # Runs RSA in ROI 
