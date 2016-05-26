@@ -4,6 +4,60 @@ from importer import *
 
 
 ###############################################
+# Pairsim RSA ... cr only
+###############################################
+
+def sl_pairsimRSA_1Ss(ds, model, pairs, radius=3, cmetric='spearman'):
+    '''
+
+    ds: pymvpa dsets for 1 subj
+    model: model DSM to be correlated with neural DSMs per searchlight center; alphabetical order of pairs taken into account! flattened. rank order first.
+    pairs: pairs to keep neural sim of
+    cmetric: spearman or eucldiean
+    '''        
+
+    if __debug__: debug.active += ["SLC"]
+
+    ds = mean_group_sample(['targets'])(ds) #make UT ds
+    print('Mean group sample computed at size:',ds.shape,'...with UT:',ds.UT)
+
+    print('Beginning slRSA analysis...')
+    tdcm = rsa_rymvpa.Pairsim_cr_RSA(model,pairs,comparison_metric=cmetric)    
+    sl = sphere_searchlight(tdcm,radius=radius)
+    slmap = sl(ds)
+    return slmap.samples[0]
+    
+def sl_pairsimRSA_nSs(data, model, pairs, radius=3, cmetric = 'correlation', h5 = 0, h5out = 'slRSA_m_nSs.hdf5'):
+    '''
+
+    data: dictionary of pymvpa dsets per subj, indices being subjIDs
+    model: model DSM to be correlated with neural DSMs per searchlight center
+    pairs: bla
+    cmetric: correlation or euclidean
+    h5: 1 if you want to save hdf5 as well
+    h5out: hdf5 outfilename
+    '''        
+    
+    ### slRSA per subject ###
+    slr= {} 
+    print('Beginning group level searchlight on %s Ss...' % (len(data)))
+    for subjid,ds in data.iteritems():
+        print('\nPreparing slRSA for subject %s' % (subjid))
+        subj_data = sl_pairsimRSA_1Ss(ds,model,pairs,radius=radius,cmetric=cmetric)
+        slr[subjid] = subj_data
+    print('slPairsim complete for all subjects')
+
+    if h5==1:
+        h5save(h5out,slr,compression=9)
+        return slr
+    else: return slr
+    
+
+
+
+
+
+###############################################
 # Runs slRSA with defined model for 1 subject
 ###############################################
 
@@ -363,3 +417,60 @@ def slBDSM_xSs_d(data,xSs_behav1,targ_comp1,xSs_behav2,targ_comp2,radius=3,h5=0,
         return slmap_bdsm
     else: return slmap_bdsm
 
+
+
+#######################################################
+# Pairsim
+#######################################################
+
+def sl_pairsim_1Ss(ds, pairs, radius=3, pairwise_metric='correlation'):
+    '''
+    Gets pairwise (dis)similarity between specified target pairs in a searchlight
+
+    ds: pymvpa dsets for 1 subj
+    pairs: pairs to get neural sim of
+    cmetric: spearman or eucldiean
+
+    Returns: dict per voxel with pairs as keys, (dis)sim as values
+    '''        
+
+    if __debug__: debug.active += ["SLC"]
+
+    ds = mean_group_sample(['targets'])(ds) #make UT ds
+    print('Mean group sample computed at size:',ds.shape,'...with UT:',ds.UT)
+
+    print('Beginning slPairsim analysis...')
+    psm = rsa_rymvpa.Pairsim(pairs,pairwise_metric=pairwise_metric)    
+    sl = sphere_searchlight(psm,radius=radius)
+    slmap = sl(ds)
+    slmaps = dict([(k,np.array([i[k] for i in slmap.samples[0]]).flatten()) for k in slmap.samples[0][0]])
+    return slmaps
+    
+def sl_pairsim_nSs(data, pairs, radius=3, pairwise_metric = 'correlation', h5 = 0, h5out = 'slRSA_m_nSs.hdf5'):
+    '''
+    Runs sl_pairsim_1Ss (pariwise dissim per specified target pairs) per subject
+
+    data: dictionary of pymvpa dsets per subj, indices being subjIDs
+    pairs: bla
+    pairwise_metric: metric for neural dis(sim)
+    h5: 1 if you want to save hdf5 as well
+    h5out: hdf5 outfilename
+
+    Returns: datadict of pairwise sim per pair per subject
+    '''        
+    
+    ### slRSA per subject ###
+    slr= {} 
+    print('Beginning group level searchlight on %s Ss...' % (len(data)))
+    for subjid,ds in data.iteritems():
+        print('\nPreparing slRSA for subject %s' % (subjid))
+        subj_data = sl_pairsim_1Ss(ds,pairs,radius=radius,pairwise_metric=pairwise_metric)
+        slr[subjid] = subj_data
+    print('slPairsim complete for all subjects')
+
+    slrall = dict([(s+'-'+p[0]+'-'+p[1],slr[s][p[0]+'-'+p[1]]) for p in pairs for s in slr])
+
+    if h5==1:
+        h5save(h5out,slrall,compression=9)
+        return slrall
+    else: return slrall

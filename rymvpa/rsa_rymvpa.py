@@ -470,5 +470,120 @@ class SampleBySampleSimilarityCorrelation(Measure):
             return Dataset(np.array([rho,p]))
 
 
+class Pairsim(Measure):
+    """
+    Returns (dis)similarity value of specified targets (or multiple pairs) 
+    """
+    
+    is_trained = True
+    """Indicate that this measure is always trained."""
+
+    def __init__(self, pairs, pairwise_metric='correlation', **kwargs):
+        """
+        Initialize
+
+        Parameters
+        ----------
+        dataset :           Dataset with N samples such that corresponding dissimilarity
+                            matrix has N*(N-1)/2 unique pairwise distances
+                            Make sure is in alphabetical order!
+        pairs :             list of lists (pairs) of target names
+        pairwise_metric :   To be used by pdist to calculate dataset DSM
+                            Default: 'correlation', 
+                            see scipy.spatial.distance.pdist for other metric options.
+        Returns
+        -------
+        Dataset :           Dataset contains the sim value 
+
+        -------
+        """
+        # init base classes first
+        Measure.__init__(self, **kwargs)
+        self.pairs = pairs
+        self.pairwise_metric = pairwise_metric
+
+    def _call(self,dataset):
+
+        # Get neural sim b/w pairs of targets
+        if self.pairwise_metric == 'correlation':
+            pairsim = dict((pair[0]+'-'+pair[1],pdist([dataset[dataset.sa.targets == pair[0]].samples[0], dataset[dataset.sa.targets == pair[1]].samples[0]],metric=self.pairwise_metric)) for pair in self.pairs)
+        else: pairsim = dict((pair[0]+'-'+pair[1],pdist([dataset[dataset.sa.targets == pair[0]].samples[0], dataset[dataset.sa.targets == pair[1]].samples[0]],metric=self.pairwise_metric)) for pair in self.pairs)
+        return Dataset(np.array([pairsim,]))
+
+
+
+
+class Pairsim_cr_RSA(Measure):
+    """
+    Bla.
+    """
+    
+    is_trained = True
+    """Indicate that this measure is always trained."""
+
+    def __init__(self, target_dsm, pairs, pairwise_metric='correlation', 
+                    comparison_metric='pearson', center_data = False, 
+                    corrcoef_only = False, **kwargs):
+        """
+        Initialize
+
+        Parameters
+        ----------
+        dataset :           Dataset with N samples such that corresponding dissimilarity
+                            matrix has N*(N-1)/2 unique pairwise distances
+        target_dsm :        Predictor DM (flat) - assumes already rankordered if spearman. 
+                            Make sure is in alphabetical order!
+        pairs :             list of lists (pairs) of target names
+        pairwise_metric :   To be used by pdist to calculate dataset DSM
+                            Default: 'correlation', 
+                            see scipy.spatial.distance.pdist for other metric options.
+        comparison_metric : To be used for comparing dataset dsm with target dsm
+                            Default: 'pearson'. Options: 'pearson' or 'spearman'
+        center_data :       Center data by subtracting mean column values from
+                            columns prior to calculating dataset dsm. 
+                            Default: False
+        corrcoef_only :     If true, return only the correlation coefficient
+                            (rho), otherwise return rho and probability, p. 
+                            Default: False 
+        Returns
+        -------
+        Dataset :           Dataset contains the correlation coefficient (rho) only or
+                            rho plus p, when corrcoef_only is set to false.
+
+        -------
+        TO DO:              Should this be done as repeated measures ANCOVA instead?
+                            Does not currently handle rho comparison of samples, or rho 
+                            corr with covariable
+                            Should use mean_group_sample in wrapper function to get comparison_sample
+                            Maybe have omit inside this method?
+        """
+        # init base classes first
+        Measure.__init__(self, **kwargs)
+        if comparison_metric not in ['spearman','pearson','euclidean']:
+            raise Exception("comparison_metric %s is not in "
+                            "['spearman','pearson','euclidean']" % comparison_metric)
+        self.target_dsm = target_dsm
+        self.pairs = pairs
+        self.pairwise_metric = pairwise_metric
+        self.comparison_metric = comparison_metric
+        self.center_data = center_data
+        self.corrcoef_only = corrcoef_only
+
+    def _call(self,dataset):
+
+        #compute comparison sample
+        ds = mean_group_sample(['targets'])(dataset)
+
+        # Get neural sim b/w pairs of targets
+        pairsim = dict((pair[0]+'-'+pair[1],pearsonr(ds[ds.sa.targets == pair[0]].samples[0], ds[ds.sa.targets == pair[1]].samples[0])[0]) for pair in self.pairs)
+        #rsa woohoo
+        pairsim_vals = np.hstack([rankdata(pairsim.values()[:(len(pairsim)/2)]),rankdata(pairsim.values()[(len(pairsim)/2):])])
+        #RSA
+        if self.comparison_metric == 'spearman':
+            res = np.arctanh(pearsonr(self.target_dsm,pairsim_vals)[0])
+        elif self.comparison_metric == 'euclidean':
+            res = pdist(np.vstack([self.target_dsm,pairsim_vals]))
+            res = np.round((-1 * res) + 2)
+        return Dataset(np.array([res,]))
 
 

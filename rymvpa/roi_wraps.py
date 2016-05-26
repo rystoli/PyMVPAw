@@ -27,11 +27,36 @@ def roi_pairsim_xSs(data, roi_mask_nii_path, pairs):
     ds = pymvpa dataset
     roi_mask_nii_path = path to nifti of roi mask
     pairs = list of lists (pairs) of target names
+    t_comp = one sample t test against this value
     '''
     
     print('Calculating pairsim per n = %s, pairs = %s, in mask = %s' % (len(data),pairs,roi_mask_nii_path))
     pairsim_dict = dict((s,roi_pairsim_1Ss(data[s], roi_mask_nii_path, pairs)) for s in data)
     return pairsim_dict
+
+def roi_pairsimRSA_nSs(data, target_dsm, roi_mask_nii_path, pairs, t_comp = 0, nmetric = 'pearson', cmetric = 'correlation'):
+    '''
+    ds = pymvpa dataset
+    target_dsms = predictor DM (make in order of alphabetical pair titles) *ASSUMES RANK ORDER DM BEFOREHAND
+    roi_mask_nii_path = path to nifti of roi mask
+    pairs = list of lists (pairs) of target names
+    nmetric = pearson vs spearman for neural dissimilairty
+    '''
+
+    pairsims = roi_pairsim_xSs(data,roi_mask_nii_path,pairs)
+    if nmetric == 'pearson': pairsims_vals = [i.values() for i in pairsims.values()]
+    elif nmetric == 'spearman':
+        pairsims_vals = [np.hstack([rankdata(i.values()[:(len(i)/2)]),rankdata(i.values()[(len(i)/2):])]) for i in pairsims.values()] #assumes shape
+    if cmetric == 'correlation':
+        pairsims_RSA = [np.arctanh(pearsonr(target_dsm,i)[0]) for i in pairsims_vals]
+        return pairsims_RSA,scipy.stats.ttest_1samp(pairsims_RSA,0)
+    elif cmetric == 'euclidean':
+        pairsims_RSA = np.array([pdist(np.vstack([target_dsm,i])) for i in pairsims_vals])
+        pairsims_RSA = np.round((-1*pairsims_RSA) + max(pairsims_RSA))
+        return pairsims_RSA,scipy.stats.ttest_1samp(pairsims_RSA,t_comp)
+
+
+
 
 
 ############################################
