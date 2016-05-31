@@ -267,6 +267,7 @@ def fisherz_pearsonr_array(array, flip2pearsonr = 0):
     '''
 
     if flip2pearsonr == 1:
+        array = 1 - array
         array = np.array( [.9999999*i if np.round(abs(i)) == 1.0 else i for i in array ] )
     array = np.array( [np.arctanh(i) for i in array] )
     return array
