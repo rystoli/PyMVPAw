@@ -261,3 +261,13 @@ def roi2ndm_nSs(data, mask, avgndm = False):
     if avgndm == True: return np.mean(ndsms.values(),axis=0)
     else: return ndsms
 
+def fisherz_pearsonr_array(array, flip2pearsonr = 0):
+    '''
+    Fisher Zs every value in array, and can flip if array is correlation distance
+    '''
+
+    if flip2pearsonr == 1:
+        array = np.array( [.9999999999999999*i if np.round(abs(i)) == 1.0 else i for i in array ] )
+    array = np.array( [np.arctanh(i) for i in array] )
+    return array
+
