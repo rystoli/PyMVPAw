@@ -334,5 +334,6 @@ def roi_pairsim_nSs(data, roi_mask_nii_path, pairs, pairwise_metric='correlation
     '''
 
     res = dict ( [ (s,roi_pairsim_1Ss(data[s],roi_mask_nii_path,pairs,pairwise_metric=pairwise_metric,fisherz=fisherz)) for s in data ] )
+    res = dict([(s, dict([(t,float(res[s][t])) for t in res[s]])) for s in res])
     if csv == 1: pd.DataFrame(res).to_csv(csvout,sep=',')
     return res
