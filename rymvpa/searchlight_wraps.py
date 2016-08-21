@@ -188,7 +188,7 @@ def slRSA_xSs(data,measure='DCM',radius=3,h5=0,h5out='slRSA_xSs.hdf5'):
 # Runs slClass for 1 subject 
 ###############################################
 
-def slClass_1Ss(ds, radius=3, clf = LinearCSVMC(), part = NFoldPartitioner()):
+def slClass_1Ss(ds, radius=3, clf = LinearCSVMC(), part = NFoldPartitioner(), partmean = 1):
     '''
 
     Executes slClass on single subjects and returns ?avg accuracy per voxel?
@@ -197,6 +197,7 @@ def slClass_1Ss(ds, radius=3, clf = LinearCSVMC(), part = NFoldPartitioner()):
     radius: sl radius, default 3
     clf: specify classifier
     part: specify partitioner
+    partmean: 1 if collapse results across results per fold
     '''        
 
     if __debug__: debug.active += ["SLC"]
@@ -210,7 +211,8 @@ def slClass_1Ss(ds, radius=3, clf = LinearCSVMC(), part = NFoldPartitioner()):
 
     print('Beginning sl classification analysis...')
     cv=CrossValidation(clf, part, enable_ca=['stats'], errorfx=lambda p, t: np.mean(p == t))
-    sl = sphere_searchlight(cv, radius=radius, postproc=mean_sample())
+    if partmean == 1: sl = sphere_searchlight(cv, radius=radius, postproc=mean_sample())
+    elif partmean == 0: sl = sphere_searchlight(cv, radius=radius)
     slr = sl(ds)
     return sfs.reverse(slr).samples - (1.0/len(ds.UT))
    
@@ -219,7 +221,7 @@ def slClass_1Ss(ds, radius=3, clf = LinearCSVMC(), part = NFoldPartitioner()):
 # Runs group level slRSA with defined model
 ###############################################
 
-def slClass_nSs(data, radius=3, clf = LinearCSVMC(), part = NFoldPartitioner(), h5 = 0, h5out = 'slSVM_nSs.hdf5'):
+def slClass_nSs(data, radius=3, clf = LinearCSVMC(), part = NFoldPartitioner(), partmean = 1, h5 = 0, h5out = 'slSVM_nSs.hdf5'):
     '''
 
     Executes slClass per subject in datadict (keys=subjIDs), returns ?avg accuracy per voxel?
@@ -229,6 +231,7 @@ def slClass_nSs(data, radius=3, clf = LinearCSVMC(), part = NFoldPartitioner(), 
     radius: sl radius, default 3
     clf: specify classifier
     part: specify partitioner
+    partmean: 1 if collapse results across results per fold
     h5: 1 if you want to save hdf5 as well
     h5out: hdf5 outfilename
     '''        
@@ -240,7 +243,7 @@ def slClass_nSs(data, radius=3, clf = LinearCSVMC(), part = NFoldPartitioner(), 
     print('Beginning group level searchlight on %s Ss...' % (len(data)))
     for subjid,ds in data.iteritems():
         print('\Running slClass for subject %s' % (subjid))
-        subj_data = slClass_1Ss(ds,radius,clf,part)
+        subj_data = slClass_1Ss(ds,radius,clf=clf,part=part,partmean=partmean)
         slrs[subjid] = subj_data
     print('slClass complete for all subjects')
 
