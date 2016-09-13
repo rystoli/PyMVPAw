@@ -24,7 +24,7 @@ del sys
 from datamanage import *
 from roi_wraps import *
 from searchlight_wraps import *
-
+from partition_rymvpa import *
 
 
 #############################################################
