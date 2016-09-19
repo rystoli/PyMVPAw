@@ -397,137 +397,6 @@ class CustomPartitioner(Partitioner):
         """
         return self.splitrule
 
-class NFoldPartitionerSplitHalf(Partitioner):
-    """Custom N-fold data partitioner which splits data 
-
-    Given a dataset with N chunks, with ``cvtype`` = 1 (which is default), it
-    would generate N partition sets, where each chunk is sequentially taken out
-    (with replacement) to form a second partition, while all other samples
-    together form the first partition.  Example, if there are 4 chunks, partition
-    sets for ``cvtype`` = 1 are::
-
-        [[1, 2, 3], [0]]
-        [[0, 2, 3], [1]]
-        [[0, 1, 3], [2]]
-        [[0, 1, 2], [3]]
-
-    If ``cvtype``>1, then all possible combinations of ``cvtype`` number of
-    chunks are taken out, so for ``cvtype`` = 2 in previous example yields::
-
-        [[2, 3], [0, 1]]
-        [[1, 3], [0, 2]]
-        [[1, 2], [0, 3]]
-        [[0, 3], [1, 2]]
-        [[0, 2], [1, 3]]
-        [[0, 1], [2, 3]]
-
-    Note that the "taken-out" partition is always labeled '2' while the
-    remaining elements are labeled '1'.
-
-    If ``cvtype`` is a float in the range from 0 to 1, it specifies
-    the ratio of present unique values to be taken.
-
-    If ``cvtype`` is large enough generating prohibitively large
-    number of combinations, provide ``count`` to limit number of
-    combinations and provide ``selection_strategy`` = 'random'.
-
-    Additionally, it will rotate N such that given 6 conditions,
-    it will train on 1, 2, 3 and test on 4, 5, 6
-    """
-
-    _DEV__doc__ = """
-    Might want to make it smarter and implement generate() generator?
-    Especially for the cases which use xrandom_unique_combinations
-
-    All needed machinery is there
-    """
-    def __init__(self, cvtype=1, **kwargs):
-        """
-        Parameters
-        ----------
-        cvtype : int, float
-          Type of leave-one-out scheme: N-(cvtype).  float value
-          (0..1) specifies ratio of samples to be taken into the
-          combination (e.g. 0.5 for 50%) given a dataset
-        """
-        Partitioner.__init__(self, **kwargs)
-        if isinstance(cvtype, float):
-            # some checks
-            if not (0 < cvtype < 1):
-                raise ValueError("Float value for cvtype must be within range "
-                                 "(0, 1), excluding boundaries. Got %r."
-                                 % cvtype)
-        self.cvtype = cvtype
-
-    def __repr__(self, prefixes=[]): #pylint: disable-msg=W0102
-        return super(NFoldPartitioner, self).__repr__(
-            prefixes=prefixes
-            + _repr_attrs(self, ['cvtype'], default=1))
-
-
-    def _get_partition_specs(self, uniqueattrs):
-        if isinstance(self.cvtype, float):
-            n = int(self.cvtype * len(uniqueattrs))
-        else:
-            n = self.cvtype
-        if self.count is None \
-           or self.selection_strategy != 'random' \
-           or self.count >= support.ncombinations(len(uniqueattrs), n):
-            # all combinations were requested so no need for
-            # randomization
-            combs = support.xunique_combinations(uniqueattrs, n)
-        else:
-            # due to selection_strategy=random they would be also
-            # reshuffled by super class later on but that should be ok
-            combs = support.xrandom_unique_combinations(uniqueattrs, n,
-                                                        self.count)
-
-        if self.count is None or self.selection_strategy != 'random':
-            # we are doomed to return all of them
-            return [(None, i) for i in combs]
-        else:
-            # It makes sense to limit number of returned combinations
-            # right away
-            return [(None, i) for ind, i in enumerate(combs)
-                    if ind < self.count]
-
-    def generate(self, ds):
-        # for each split
-        cfgs = self.get_partition_specs(ds)
-        n_cfgs = len(cfgs)
-
-        for iparts, parts in enumerate(cfgs):
-            # give attribute array defining the current partition set
-            pattr = self.get_partitions_attr(ds, parts)
-
-            # shallow copy of the dataset
-            pds = ds.copy(deep=False)
-
-            # Gets splits from SA and makes conditions to keep 0, others 1+
-            splits = pds.sa.splits ^ abs(pattr - 2)
-
-
-            # Adds nothing to conditions to keep
-            # Adds 2 or more to conditions you don't want to train or test
-            # Splitter only considers first two partitions to train/test
-            # All higher partitions are ignored
-            pds.sa[self.get_space()] = pattr + (splits * 2) 
-            pds.a[self.get_space() + "_set"] = iparts
-            pds.a['lastpartitionset'] = iparts == (n_cfgs - 1)
-
-            # Splits should be labeled such that 0 = what you want to train on
-            # and 1 should be your testing conditions This flips the bits of the
-            # second partition and increments the targets that you want to
-            # exclude from the training and testing e.g., If minimal groups are
-            # marked with a 0 and political groups with 1 then it will mark:
-
-            # the minimal groups in the training set with a 1, 
-            # the political groups in the testing set with a 2,
-            # the political groups in the training set with a 3,
-            # the minimal groups in the testing  set with a 4,
-
-            yield pds
-
 
 class NFoldPartitioner(Partitioner):
     """Generic N-fold data partitioner.
@@ -709,3 +578,150 @@ class ExcludeTargetsCombinationsPartitioner(Node):
             pds = ds.copy(deep=False)
             pds.sa[self.space] = partitioning
             yield pds
+
+
+class NFoldPartitionerBWTargets(Partitioner):
+    """Custom N-fold data partitioner which allows specifying of targets to
+       train vs. test on (specifically, it actually allows specification of specific
+       samples, which can be selected by target, allowing other possible analyses).
+      
+       IMPORTANT:
+
+       *Requires the addition of a sample attribute 'splits'. sa['splits'] specifies
+        which samples (and therefore targets)  to train and test upon. Samples with the 
+        integer 0 (zero) are trained upon, with the integer 1 (one) are tested upon.
+
+       *Assumes all targets are present in all chunks, as the NFoldPartitioner
+        trains and tests at some point on each individual chunk
+
+    NFoldPartitioner DETAILS:
+
+    Given a dataset with N chunks, with ``cvtype`` = 1 (which is default), it
+    would generate N partition sets, where each chunk is sequentially taken out
+    (with replacement) to form a second partition, while all other samples
+    together form the first partition.  Example, if there are 4 chunks, partition
+    sets for ``cvtype`` = 1 are::
+
+        [[1, 2, 3], [0]]
+        [[0, 2, 3], [1]]
+        [[0, 1, 3], [2]]
+        [[0, 1, 2], [3]]
+
+    If ``cvtype``>1, then all possible combinations of ``cvtype`` number of
+    chunks are taken out, so for ``cvtype`` = 2 in previous example yields::
+
+        [[2, 3], [0, 1]]
+        [[1, 3], [0, 2]]
+        [[1, 2], [0, 3]]
+        [[0, 3], [1, 2]]
+        [[0, 2], [1, 3]]
+        [[0, 1], [2, 3]]
+
+    Note that the "taken-out" partition is always labeled '2' while the
+    remaining elements are labeled '1'.
+
+    If ``cvtype`` is a float in the range from 0 to 1, it specifies
+    the ratio of present unique values to be taken.
+
+    If ``cvtype`` is large enough generating prohibitively large
+    number of combinations, provide ``count`` to limit number of
+    combinations and provide ``selection_strategy`` = 'random'.
+
+    Additionally, it will rotate N such that given 6 conditions,
+    it will train on 1, 2, 3 and test on 4, 5, 6
+    """
+
+    _DEV__doc__ = """
+    Might want to make it smarter and implement generate() generator?
+    Especially for the cases which use xrandom_unique_combinations
+
+    All needed machinery is there
+    """
+    def __init__(self, cvtype=1, **kwargs):
+        """
+        Parameters
+        ----------
+        cvtype : int, float
+          Type of leave-one-out scheme: N-(cvtype).  float value
+          (0..1) specifies ratio of samples to be taken into the
+          combination (e.g. 0.5 for 50%) given a dataset
+        """
+        Partitioner.__init__(self, **kwargs)
+        if isinstance(cvtype, float):
+            # some checks
+            if not (0 < cvtype < 1):
+                raise ValueError("Float value for cvtype must be within range "
+                                 "(0, 1), excluding boundaries. Got %r."
+                                 % cvtype)
+        self.cvtype = cvtype
+
+    def __repr__(self, prefixes=[]): #pylint: disable-msg=W0102
+        return super(NFoldPartitioner, self).__repr__(
+            prefixes=prefixes
+            + _repr_attrs(self, ['cvtype'], default=1))
+
+
+    def _get_partition_specs(self, uniqueattrs):
+        if isinstance(self.cvtype, float):
+            n = int(self.cvtype * len(uniqueattrs))
+        else:
+            n = self.cvtype
+        if self.count is None \
+           or self.selection_strategy != 'random' \
+           or self.count >= support.ncombinations(len(uniqueattrs), n):
+            # all combinations were requested so no need for
+            # randomization
+            combs = support.xunique_combinations(uniqueattrs, n)
+        else:
+            # due to selection_strategy=random they would be also
+            # reshuffled by super class later on but that should be ok
+            combs = support.xrandom_unique_combinations(uniqueattrs, n,
+                                                        self.count)
+
+        if self.count is None or self.selection_strategy != 'random':
+            # we are doomed to return all of them
+            return [(None, i) for i in combs]
+        else:
+            # It makes sense to limit number of returned combinations
+            # right away
+            return [(None, i) for ind, i in enumerate(combs)
+                    if ind < self.count]
+
+    def generate(self, ds):
+        # for each split
+        cfgs = self.get_partition_specs(ds)
+        n_cfgs = len(cfgs)
+
+        for iparts, parts in enumerate(cfgs):
+            # give attribute array defining the current partition set
+            pattr = self.get_partitions_attr(ds, parts)
+
+            # shallow copy of the dataset
+            pds = ds.copy(deep=False)
+
+            # Gets splits from SA and makes conditions to keep 0, others 1+
+            splits = pds.sa.splits ^ abs(pattr - 2)
+
+
+            # Adds nothing to conditions to keep
+            # Adds 2 or more to conditions you don't want to train or test
+            # Splitter only considers first two partitions to train/test
+            # All higher partitions are ignored
+            pds.sa[self.get_space()] = pattr + (splits * 2) 
+            pds.a[self.get_space() + "_set"] = iparts
+            pds.a['lastpartitionset'] = iparts == (n_cfgs - 1)
+
+            # Splits should be labeled such that 0 = what you want to train on
+            # and 1 should be your testing conditions This flips the bits of the
+            # second partition and increments the targets that you want to
+            # exclude from the training and testing e.g., If minimal groups are
+            # marked with a 0 and political groups with 1 then it will mark:
+
+            # the minimal groups in the training set with a 1, 
+            # the political groups in the testing set with a 2,
+            # the political groups in the training set with a 3,
+            # the minimal groups in the testing  set with a 4,
+
+            yield pds
+
+
