@@ -147,6 +147,30 @@ def select_targets_data(data, select):
 	data[key]= select_targets(ds, select)
     return data
     
+def select_chunks(ds, select):
+    '''
+    Returns ds with specified chunks selected
+
+    ds: pymvpa dataset with chunks
+    select: list of chunks to be selected
+    '''     
+
+    omit= [x for x in ds.sa.chunks if not (x in select)]
+    return omit_chunks(ds, omit)
+
+def select_chunks_data(data, select):
+    '''
+    Returns data with specified chunks selected
+
+    data: dictionary containing pymvpa dataset with chunks
+    select: list of chunks to be selected
+    '''
+    
+    for key in data:
+	ds= data[key]
+	data[key]= select_chunks(ds, select)
+    return data
+    
 def mask_dset(ds, mask):
     '''
     Returns masked dataset
