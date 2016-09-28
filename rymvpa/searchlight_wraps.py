@@ -3,58 +3,7 @@ from importer import *
 #searchlight wrappers
 
 
-###############################################
-# Pairsim RSA ... cr only
-###############################################
-
-def sl_pairsimRSA_1Ss(ds, model, pairs, radius=3, cmetric='spearman'):
-    '''
-
-    ds: pymvpa dsets for 1 subj
-    model: model DSM to be correlated with neural DSMs per searchlight center; alphabetical order of pairs taken into account! flattened. rank order first.
-    pairs: pairs to keep neural sim of
-    cmetric: spearman or eucldiean
-    '''        
-
-    if __debug__: debug.active += ["SLC"]
-
-    ds = mean_group_sample(['targets'])(ds) #make UT ds
-    print('Mean group sample computed at size:',ds.shape,'...with UT:',ds.UT)
-
-    print('Beginning slRSA analysis...')
-    tdcm = rsa_rymvpa.Pairsim_cr_RSA(model,pairs,comparison_metric=cmetric)    
-    sl = sphere_searchlight(tdcm,radius=radius)
-    slmap = sl(ds)
-    return slmap.samples[0]
     
-def sl_pairsimRSA_nSs(data, model, pairs, radius=3, cmetric = 'correlation', h5 = 0, h5out = 'slRSA_m_nSs.hdf5'):
-    '''
-
-    data: dictionary of pymvpa dsets per subj, indices being subjIDs
-    model: model DSM to be correlated with neural DSMs per searchlight center
-    pairs: bla
-    cmetric: correlation or euclidean
-    h5: 1 if you want to save hdf5 as well
-    h5out: hdf5 outfilename
-    '''        
-    
-    ### slRSA per subject ###
-    slr= {} 
-    print('Beginning group level searchlight on %s Ss...' % (len(data)))
-    for subjid,ds in data.iteritems():
-        print('\nPreparing slRSA for subject %s' % (subjid))
-        subj_data = sl_pairsimRSA_1Ss(ds,model,pairs,radius=radius,cmetric=cmetric)
-        slr[subjid] = subj_data
-    print('slPairsim complete for all subjects')
-
-    if h5==1:
-        h5save(h5out,slr,compression=9)
-        return slr
-    else: return slr
-    
-
-
-
 
 
 ###############################################
@@ -138,6 +87,63 @@ def slRSA_m_nSs(data, model, radius=3, partial_dsm = None, control_dsms = None, 
         return slr
     else: return slr
     
+
+###############################################
+# Pairsim RSA 
+###############################################
+
+def sl_pairsimRSA_1Ss(ds, pairs_dsm, radius=3, cmetric='spearman'):
+    '''
+    Runs standard RSA between a specified model and neural data, 
+    but allows specification of exactly which target-pairs are included
+    i.e., specification of exactly which DM cells are kept in the analysis
+
+    ds: pymvpa dsets for 1 subj
+    pairs_dsm : Dictionary of target pairs separated by '-' (keys) and
+                corresponding predicted model dissimilarity values (values)
+    cmetric: spearman or pearson or eucldiean
+    '''        
+
+    if __debug__: debug.active += ["SLC"]
+
+    ds = mean_group_sample(['targets'])(ds) #make UT ds
+    print('Mean group sample computed at size:',ds.shape,'...with UT:',ds.UT)
+
+    print('Beginning slRSA analysis...')
+    tdcm = rsa_rymvpa.Pairsim_RSA(pairs_dsm,comparison_metric=cmetric)    
+    sl = sphere_searchlight(tdcm,radius=radius)
+    slmap = sl(ds)
+    return slmap.samples[0]
+    
+
+def sl_pairsimRSA_nSs(data, pairs_dsm, radius=3, cmetric = 'pearson', h5 = 0, h5out = 'slRSApairsim_m_nSs.hdf5'):
+    '''
+    Runs standard RSA between a specified model and neural data, 
+    but allows specification of exactly which target-pairs are included
+    i.e., specification of exactly which DM cells are kept in the analysis
+
+    data: dictionary of pymvpa dsets per subj, indices being subjIDs
+    pairs_dsm : Dictionary of target pairs separated by '-' (keys) and
+                corresponding predicted model dissimilarity values (values)
+    cmetric: pearson or spearman or euclidean
+    h5: 1 if you want to save hdf5 as well
+    h5out: hdf5 outfilename
+    '''        
+    
+    ### slRSA per subject ###
+    slr= {} 
+    print('Beginning group level searchlight on %s Ss...' % (len(data)))
+    for subjid,ds in data.iteritems():
+        print('\nPreparing slRSA for subject %s' % (subjid))
+        subj_data = sl_pairsimRSA_1Ss(ds,pairs_dsm,radius=radius,cmetric=cmetric)
+        slr[subjid] = subj_data
+    print('slPairsim complete for all subjects')
+
+    if h5==1:
+        h5save(h5out,slr,compression=9)
+        return slr
+    else: return slr
+
 
 ###############################################
 # across subjects RSA
