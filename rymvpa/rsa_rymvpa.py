@@ -548,11 +548,8 @@ class Pairsim_RSA(Measure):
                             rho plus p, when corrcoef_only is set to false.
 
         -------
-        TO DO:              Should this be done as repeated measures ANCOVA instead?
-                            Does not currently handle rho comparison of samples, or rho 
-                            corr with covariable
-                            Should use mean_group_sample in wrapper function to get comparison_sample
-                            Maybe have omit inside this method?
+        TO DO:             Add partial correlation and multiple regression RSA 
+                            
         """
         # init base classes first
         Measure.__init__(self, **kwargs)
