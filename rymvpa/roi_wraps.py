@@ -337,3 +337,75 @@ def roi_pairsim_nSs(data, roi_mask_nii_path, pairs, pairwise_metric='correlation
     res = dict([(s, dict([(t,float(res[s][t])) for t in res[s]])) for s in res])
     if csv == 1: pd.DataFrame(res).transpose().to_csv(csvout,sep=',')
     return res
+
+#########################################################
+#########################################################
+#########################################################
+# Classification
+########################################################
+
+def roiClass_1Ss(ds, roi_mask_nii_path, clf = LinearCSVMC(), part = NFoldPartitioner()):
+    '''
+
+    Executes classification on ROI with target_dm
+
+    ds = pymvpa dataset
+    roi_mask_nii_path = path to nifti of roi mask
+    clf: specify classifier
+    part: specify partitioner
+    '''
+
+    data_m = mask_dset(ds, roi_mask_nii_path)
+    print('Dataset masked to shape: %s' % (str(data_m.shape)))
+ 
+    #data prep
+    remapper = data_m.copy()
+    inv_mask = data_m.samples.std(axis=0)>0
+    sfs = StaticFeatureSelection(slicearg=inv_mask)
+    sfs.train(remapper)
+    data_m = remove_invariant_features(data_m)
+
+    print('Beginning roiClass analysis w/ targets %s...' % (data_m.UT))
+    cv = CrossValidation(clf, part, enable_ca=['stats'], errorfx=lambda p, t: np.mean(p == t))
+    res = cv(data_m)
+    return np.mean(res.samples) - (1.0 / len(data_m.UT))
+    
+#############################################
+# Runs Class in ROI per subject
+#############################################
+
+def roiClass_nSs(data, roi_mask_nii_path, clf = LinearCSVMC(), part = NFoldPartitioner(), h5 = 0, h5out = 'roiClass_nSs.hdf5'):
+    '''
+
+    Executes classificaiton in ROI per subject in datadict 
+
+    data: dictionary of pymvpa dsets per subj, indices being subjIDs
+    roi_mask_nii_path = path to nifti of roi mask
+    clf: specify classifier
+    part: specify partitioner
+    h5: 1 if want h5 per subj 
+    h5out: h outfilename suffix
+    '''
+
+    print('roiClass initiated with...\n Ss: %s\nroi_mask: %s\nh5: %s\nh5out: %s' % (data.keys(),roi_mask_nii_path,h5,h5out))
+
+    ### roiClass per subject ###
+    cres={} #dictionary to hold reuslts per subj
+    print('Beginning group level roi analysis on %s Ss...' % (len(data)))
+
+    for subjid,ds in data.iteritems():
+        print('\Running roiClass for subject %s' % (subjid))
+        subj_data = roiClass_1Ss(ds,roi_mask_nii_path,clf,part)
+        cres[subjid] = subj_data
+    print cres
+    tres = scipy.stats.ttest_1samp(cres.values(),0)
+    print('roi group level results: %s' % (str(tres)))
+
+    if h5==1:
+        h5save(h5out,[tres,cres],compression=9)
+        return [tres,cres] 
+    else: return [tres,cres]
+
+
+
+

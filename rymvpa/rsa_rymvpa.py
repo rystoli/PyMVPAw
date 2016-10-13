@@ -586,3 +586,77 @@ class Pairsim_RSA(Measure):
         return Dataset(np.array([res,]))
 
 
+class Pairsim_RSA_Regression(Measure):
+    """
+    Runs multiple regression RSA but only included specified cells from the DM
+    """
+    
+    is_trained = True
+    """Indicate that this measure is always trained."""
+
+    def __init__(self, pairs_dsm, control_dsms_pairs = None,
+                  pairwise_metric='correlation', resid = False,  
+                  center_data = False, corrcoef_only = False, **kwargs):
+        """
+        Initialize
+
+        Parameters
+        ----------
+        dataset :           Dataset with N samples such that corresponding dissimilarity
+                            matrix has N*(N-1)/2 unique pairwise distances
+        pairs_dsm :         Dictionary of target pairs separated by '-' (keys) and
+                            corresponding predicted model dissimilarity values (values)
+        pairwise_metric :   To be used by pdist to calculate dataset DSM
+                            Default: 'correlation', 
+                            see scipy.spatial.distance.pdist for other metric options.
+        center_data :       Center data by subtracting mean column values from
+                            columns prior to calculating dataset dsm. 
+                            Default: False
+        corrcoef_only :     If true, return only the correlation coefficient
+                            (rho), otherwise return rho and probability, p. 
+                            Default: False 
+        Returns
+        -------
+        Dataset :           Dataset contains the correlation coefficient (rho) only or
+                            rho plus p, when corrcoef_only is set to false.
+
+        -------
+        TO DO:             Add partial correlation and multiple regression RSA 
+                            
+        """
+        # init base classes first
+        Measure.__init__(self, **kwargs)
+        if comparison_metric not in ['spearman','pearson','euclidean']:
+            raise Exception("comparison_metric %s is not in "
+                            "['spearman','pearson','euclidean']" % comparison_metric)
+        self.pairs_dsm = pairs_dsm
+        self.control_dsm_pairs = control_dsm_pairs
+        self.pairwise_metric = pairwise_metric
+        self.center_data = center_data
+        self.corrcoef_only = corrcoef_only
+        self.pairs = [i.split('-') for i in self.pairs_dsm.keys()]
+
+    def _call(self,dataset):
+
+        #compute comparison sample
+        ds = mean_group_sample(['targets'])(dataset)
+
+        # Get neural sim b/w pairs of targets
+        pairsim = dict((pair[0]+'-'+pair[1],(1 - pearsonr(ds[ds.sa.targets == pair[0]].samples[0], ds[ds.sa.targets == pair[1]].samples[0])[0])) for pair in self.pairs)
+
+        #Order DMs...
+        pairs_dsm_o = OrderedDict(sorted(self.pairs_dsm.items())).values()
+        pairsim_o = OrderedDict(sorted(pairsim.items())).values()
+
+        #RSA
+        if self.comparison_metric == 'spearman':
+            res = np.arctanh(pearsonr(rankdata(pairs_dsm_o),rankdata(pairsim_o))[0])
+        elif self.comparison_metric == 'pearson':
+            res = np.arctanh(pearsonr(pairs_dsm_o,pairsim_o)[0])
+        elif self.comparison_metric == 'euclidean':
+            res = pdist(np.vstack([self.pairs_dsm,pairsim_vals]))
+            res = np.round((-1 * res) + 2) #why?
+        return Dataset(np.array([res,]))
+
+
+
