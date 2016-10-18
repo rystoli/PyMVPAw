@@ -10,7 +10,7 @@ from importer import *
 # Runs slRSA with defined model for 1 subject
 ###############################################
 
-def slRSA_m_1Ss(ds, model, partial_dsm = None, control_dsms = None, resid = False, radius=3, cmetric='pearson'):
+def slRSA_m_1Ss(ds, model, partial_dsm = None, control_dsms = None, resid = False, radius=3, cmetric='pearson',status_print=1):
     '''
 
     Executes slRSA on single subjects and returns tuple of arrays of 1-p's [0], and fisher Z transformed r's [1]
@@ -23,11 +23,14 @@ def slRSA_m_1Ss(ds, model, partial_dsm = None, control_dsms = None, resid = Fals
     resid: Default False. Set to True to return residual to searchlight center
     radius: sl radius, default 3
     cmetric: default pearson, other optin 'spearman'
+    status_print: if 1, prints status of searchlight (progress)
     '''        
 
     if partial_dsm != None and control_dsms != None: raise NameError('Only set partial_dsm (partial model control) OR control_dsms (multiple regression model controls)')
 
-    if __debug__: debug.active += ["SLC"]
+    if status_print == 1:
+        if __debug__: debug.active += ["SLC"]
+    else: pass
 
     ds = mean_group_sample(['targets'])(ds) #make UT ds
     print('Mean group sample computed at size:',ds.shape,'...with UT:',ds.UT)
@@ -92,7 +95,7 @@ def slRSA_m_nSs(data, model, radius=3, partial_dsm = None, control_dsms = None, 
 # Pairsim RSA 
 ###############################################
 
-def sl_pairsimRSA_1Ss(ds, pairs_dsm, radius=3, cmetric='spearman'):
+def sl_pairsimRSA_1Ss(ds, pairs_dsm, radius=3, cmetric='spearman',status_print=1):
     '''
     Runs standard RSA between a specified model and neural data, 
     but allows specification of exactly which target-pairs are included
@@ -102,9 +105,12 @@ def sl_pairsimRSA_1Ss(ds, pairs_dsm, radius=3, cmetric='spearman'):
     pairs_dsm : Dictionary of target pairs separated by '-' (keys) and
                 corresponding predicted model dissimilarity values (values)
     cmetric: spearman or pearson or eucldiean
+    status_print: if 1, prints status of searchlight (progress)
     '''        
 
-    if __debug__: debug.active += ["SLC"]
+    if status_print == 1:
+        if __debug__: debug.active += ["SLC"]
+    else: pass
 
     ds = mean_group_sample(['targets'])(ds) #make UT ds
     print('Mean group sample computed at size:',ds.shape,'...with UT:',ds.UT)
@@ -149,7 +155,7 @@ def sl_pairsimRSA_nSs(data, pairs_dsm, radius=3, cmetric = 'pearson', h5 = 0, h5
 # across subjects RSA
 ###############################################
 
-def slRSA_xSs(data,measure='DCM',radius=3,h5=0,h5out='slRSA_xSs.hdf5'):
+def slRSA_xSs(data,measure='DCM',radius=3,h5=0,h5out='slRSA_xSs.hdf5',status_print=1):
     '''
     
     Returns avg map of xSs correlations of neural DSMs per searchlight sphere center
@@ -160,14 +166,17 @@ def slRSA_xSs(data,measure='DCM',radius=3,h5=0,h5out='slRSA_xSs.hdf5'):
     measure: specify if measure is 'DCM' or 'RSM'
     h5: 1 saves hdf5 of output as well 
     h5out: hdf5 outfilename
+    status_print: if 1, prints status of searchlight (progress)
     
     TO DO: should not return average, but full ds of pairs? - need to split ds's into different keys in datadict
     '''   
 
     print('%s xSs slRSA initiated with...\n Ss: %s\nradius: %s\nh5: %s\nh5out: %s' % (measure,data.keys(),radius,h5,h5out))
 
-    if __debug__: debug.active += ["SLC"]
-    
+    if status_print == 1:
+        if __debug__: debug.active += ["SLC"]
+    else: pass
+ 
     for i in data:
         data[i] = mean_group_sample(['targets'])(data[i]) 
     print('Dataset targets averaged with shapes:',[ds.shape for ds in data.values()])
@@ -194,7 +203,7 @@ def slRSA_xSs(data,measure='DCM',radius=3,h5=0,h5out='slRSA_xSs.hdf5'):
 # Runs slClass for 1 subject 
 ###############################################
 
-def slClass_1Ss(ds, radius=3, clf = LinearCSVMC(), part = NFoldPartitioner(), partmean = 1):
+def slClass_1Ss(ds, radius=3, clf = LinearCSVMC(), part = NFoldPartitioner(), partmean = 1,status_print=1):
     '''
 
     Executes slClass on single subjects and returns ?avg accuracy per voxel?
@@ -204,9 +213,12 @@ def slClass_1Ss(ds, radius=3, clf = LinearCSVMC(), part = NFoldPartitioner(), pa
     clf: specify classifier
     part: specify partitioner
     partmean: 1 if collapse results across results per fold
+    status_print: if 1, prints status of searchlight (progress)
     '''        
 
-    if __debug__: debug.active += ["SLC"]
+    if status_print == 1:
+        if __debug__: debug.active += ["SLC"]
+    else: pass
 
     #dataprep
     remapper = ds.copy()
@@ -263,7 +275,7 @@ def slClass_nSs(data, radius=3, clf = LinearCSVMC(), part = NFoldPartitioner(), 
 # Runs SampleBySampleSimilarityCorrelation through searchlight
 #############################################
 
-def slSxS_1Ss(ds, targs_comps, sample_covariable, omit = [], radius = 3, h5 = 0, h5out = 'slSxS_1Ss.nii.gz'):
+def slSxS_1Ss(ds, targs_comps, sample_covariable, omit = [], radius = 3, h5 = 0, h5out = 'slSxS_1Ss.nii.gz',status_print=1):
     '''
 
     Executes searchlight SampleBySampleSimilarityCorrelation, returns corr coef (and optional p value) per voxel
@@ -276,12 +288,15 @@ def slSxS_1Ss(ds, targs_comps, sample_covariable, omit = [], radius = 3, h5 = 0,
     radius: sl radius, default 3
     h5: 1 if you want to save hdf5 as well
     h5out: hdf5 outfilename
+    status_print: if 1, prints status of searchlight (progress)
     
     TO DO: probably better way to keep wanted targets in dset and omit others with having to specify omits...
     '''    
    
-    if __debug__: debug.active += ["SLC"]
-    
+    if status_print == 1:
+        if __debug__: debug.active += ["SLC"]
+    else: pass
+ 
     print('MAKE SURE you have omitted targets not specified in the analysis!')
     for om in omit:
         ds = ds[ds.sa.targets != om] # cut out omits
@@ -342,7 +357,7 @@ def slSxS_nSs(data, targs_comps, sample_covariable, omit=[], radius=3, h5 = 0, h
 # BDSM 
 ###############################################
 
-def slBDSM_xSs(data,xSs_behav,targ_comp,radius=3,h5=0,h5out='bdsm_xSs.hdf5'):
+def slBDSM_xSs(data,xSs_behav,targ_comp,radius=3,h5=0,h5out='bdsm_xSs.hdf5',status_print=1):
     '''
     
     Returns correlation of subject-level behav sim with subject-level neural sim between two targs
@@ -354,13 +369,15 @@ def slBDSM_xSs(data,xSs_behav,targ_comp,radius=3,h5=0,h5out='bdsm_xSs.hdf5'):
     radius: sl radius, default 3
     h5: 1 saves hdf5 of output as well 
     h5out: hdf5 outfilename
+    status_print: if 1, prints status of searchlight (progress)
     
     '''   
 
     print('xSs BDSM initiated with...\n Ss: %s \n targ_comp: %s\nradius: %s\nh5: %s\nh5out: %s' % (data.keys(),targ_comp,radius,h5,h5out))
 
-    if __debug__:
-        debug.active += ["SLC"]
+    if status_print == 1:
+        if __debug__: debug.active += ["SLC"]
+    else: pass
     
     for i in data:
         data[i] = mean_group_sample(['targets'])(data[i]) 
@@ -386,7 +403,7 @@ def slBDSM_xSs(data,xSs_behav,targ_comp,radius=3,h5=0,h5out='bdsm_xSs.hdf5'):
 # BDSM double
 ###############################################
 
-def slBDSM_xSs_d(data,xSs_behav1,targ_comp1,xSs_behav2,targ_comp2,radius=3,h5=0,h5out='bdsm_xSs.hdf5'):
+def slBDSM_xSs_d(data,xSs_behav1,targ_comp1,xSs_behav2,targ_comp2,radius=3,h5=0,h5out='bdsm_xSs.hdf5',status_print=1):
     '''
     
     Returns correlation of subject-level behav sim with subject-level neural sim between two targs
@@ -398,14 +415,16 @@ def slBDSM_xSs_d(data,xSs_behav1,targ_comp1,xSs_behav2,targ_comp2,radius=3,h5=0,
     radius: sl radius, default 3
     h5: 1 saves hdf5 of output as well 
     h5out: hdf5 outfilename
+    status_print: if 1, prints status of searchlight (progress)
     
     '''   
 
     print('xSs BDSM initiated with...\n Ss: %s \n targ_comp1: %s\n targ_comp2: %s\n radius: %s\nh5: %s\nh5out: %s' % (data.keys(),targ_comp1,targ_comp2,radius,h5,h5out))
 
-    if __debug__:
-        debug.active += ["SLC"]
-    
+    if status_print == 1:
+        if __debug__: debug.active += ["SLC"]
+    else: pass
+ 
     for i in data:
         data[i] = mean_group_sample(['targets'])(data[i]) 
     print('Dataset targets averaged with shapes:',[ds.shape for ds in data.values()])
@@ -432,7 +451,7 @@ def slBDSM_xSs_d(data,xSs_behav1,targ_comp1,xSs_behav2,targ_comp2,radius=3,h5=0,
 # Pairsim
 #######################################################
 
-def sl_pairsim_1Ss(ds, pairs, radius=3, pairwise_metric='correlation'):
+def sl_pairsim_1Ss(ds, pairs, radius=3, pairwise_metric='correlation',status_print=1):
     '''
     Gets pairwise (dis)similarity between specified target pairs in a searchlight
 
@@ -441,9 +460,12 @@ def sl_pairsim_1Ss(ds, pairs, radius=3, pairwise_metric='correlation'):
     cmetric: spearman or eucldiean
 
     Returns: dict per voxel with pairs as keys, (dis)sim as values
+    status_print: if 1, prints status of searchlight (progress)
     '''        
 
-    if __debug__: debug.active += ["SLC"]
+    if status_print == 1:
+        if __debug__: debug.active += ["SLC"]
+    else: pass
 
     ds = mean_group_sample(['targets'])(ds) #make UT ds
     print('Mean group sample computed at size:',ds.shape,'...with UT:',ds.UT)
