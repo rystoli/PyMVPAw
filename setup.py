@@ -22,3 +22,10 @@ setup(name='rymvpa',
 #git add -A #adds including new stuff, deletes old (see other options like -u)
 #git commit -am "notes"
 #git push origin master
+
+#run on HPC or in case where can not pip install
+# - first, git clone RyMVPA 
+# - then, instead of 'from rymvpa import *' use:
+#>import sys
+#>sys.path.append('/home/rms620/RyMVPA/rymvpa/') #clone path
+#>from __init__ import *
