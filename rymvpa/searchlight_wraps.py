@@ -56,7 +56,7 @@ def slRSA_m_1Ss(ds, model, partial_dsm = None, control_dsms = None, resid = Fals
 # Runs group level slRSA with defined model
 ###############################################
 
-def slRSA_m_nSs(data, model, radius=3, partial_dsm = None, control_dsms = None, resid = False, cmetric = 'pearson', h5 = 0, h5out = 'slRSA_m_nSs.hdf5'):
+def slRSA_m_nSs(data, model, radius=3, partial_dsm = None, control_dsms = None, resid = False, cmetric = 'pearson', h5 = 0, h5out = 'slRSA_m_nSs.hdf5',status_print=1):
     '''
 
     Executes slRSA per subject in datadict (keys=subjIDs), returns dict of avg map fisher Z transformed r's and 1-p's per voxel arrays
@@ -80,7 +80,7 @@ def slRSA_m_nSs(data, model, radius=3, partial_dsm = None, control_dsms = None, 
     print('Beginning group level searchlight on %s Ss...' % (len(data)))
     for subjid,ds in data.iteritems():
         print('\nPreparing slRSA for subject %s' % (subjid))
-        subj_data = slRSA_m_1Ss(ds,model,partial_dsm=partial_dsm,control_dsms=control_dsms,resid=resid,cmetric=cmetric)
+        subj_data = slRSA_m_1Ss(ds,model,partial_dsm=partial_dsm,control_dsms=control_dsms,resid=resid,cmetric=cmetric,status_print=status_print)
         if partial_dsm == None and control_dsms == None: slr['p'][subjid],slr['r'][subjid] = subj_data[0],subj_data[1]
         else: slr['r'][subjid] = subj_data
     print('slRSA complete for all subjects')
@@ -122,7 +122,7 @@ def sl_pairsimRSA_1Ss(ds, pairs_dsm, radius=3, cmetric='spearman',status_print=1
     return slmap.samples[0]
     
 
-def sl_pairsimRSA_nSs(data, pairs_dsm, radius=3, cmetric = 'pearson', h5 = 0, h5out = 'slRSApairsim_m_nSs.hdf5'):
+def sl_pairsimRSA_nSs(data, pairs_dsm, radius=3, cmetric = 'pearson', h5 = 0, h5out = 'slRSApairsim_m_nSs.hdf5',status_print=1):
     '''
     Runs standard RSA between a specified model and neural data, 
     but allows specification of exactly which target-pairs are included
@@ -141,7 +141,7 @@ def sl_pairsimRSA_nSs(data, pairs_dsm, radius=3, cmetric = 'pearson', h5 = 0, h5
     print('Beginning group level searchlight on %s Ss...' % (len(data)))
     for subjid,ds in data.iteritems():
         print('\nPreparing slRSA for subject %s' % (subjid))
-        subj_data = sl_pairsimRSA_1Ss(ds,pairs_dsm,radius=radius,cmetric=cmetric)
+        subj_data = sl_pairsimRSA_1Ss(ds,pairs_dsm,radius=radius,cmetric=cmetric,status_print=status_print)
         slr[subjid] = subj_data
     print('slPairsim complete for all subjects')
 
@@ -239,7 +239,7 @@ def slClass_1Ss(ds, radius=3, clf = LinearCSVMC(), part = NFoldPartitioner(), pa
 # Runs group level slRSA with defined model
 ###############################################
 
-def slClass_nSs(data, radius=3, clf = LinearCSVMC(), part = NFoldPartitioner(), partmean = 1, h5 = 0, h5out = 'slSVM_nSs.hdf5'):
+def slClass_nSs(data, radius=3, clf = LinearCSVMC(), part = NFoldPartitioner(), partmean = 1, h5 = 0, h5out = 'slSVM_nSs.hdf5',status_print=1):
     '''
 
     Executes slClass per subject in datadict (keys=subjIDs), returns ?avg accuracy per voxel?
@@ -261,7 +261,7 @@ def slClass_nSs(data, radius=3, clf = LinearCSVMC(), part = NFoldPartitioner(), 
     print('Beginning group level searchlight on %s Ss...' % (len(data)))
     for subjid,ds in data.iteritems():
         print('\Running slClass for subject %s' % (subjid))
-        subj_data = slClass_1Ss(ds,radius,clf=clf,part=part,partmean=partmean)
+        subj_data = slClass_1Ss(ds,radius,clf=clf,part=part,partmean=partmean,status_print=status_print)
         slrs[subjid] = subj_data
     print('slClass complete for all subjects')
 
@@ -321,7 +321,7 @@ def slSxS_1Ss(ds, targs_comps, sample_covariable, omit = [], radius = 3, h5 = 0,
 # SxS group 
 ###############################################
 
-def slSxS_nSs(data, targs_comps, sample_covariable, omit=[], radius=3, h5 = 0, h5out = 'slSxS_nSs.hdf5'):
+def slSxS_nSs(data, targs_comps, sample_covariable, omit=[], radius=3, h5 = 0, h5out = 'slSxS_nSs.hdf5',status_print=1):
     '''
 
     Executes searchlight SampleBySampleSimilarityCorrelation, returns corr coef (and optional p value) per voxel
@@ -344,7 +344,7 @@ def slSxS_nSs(data, targs_comps, sample_covariable, omit=[], radius=3, h5 = 0, h
     print('Beginning group level searchlight on %s Ss...' % (len(data)))
     for subjid,ds in data.iteritems():
         print('\Running slSxS for subject %s' % (subjid))
-        subj_data = slSxS_1Ss(ds,targs_comps,sample_covariable,omit,radius,h5,subjid+h5out)
+        subj_data = slSxS_1Ss(ds,targs_comps,sample_covariable,omit,radius,h5,subjid+h5out,status_print=status_print)
         slrs[subjid] = subj_data
     print('slSxS complete for all subjects')
 
@@ -477,7 +477,7 @@ def sl_pairsim_1Ss(ds, pairs, radius=3, pairwise_metric='correlation',status_pri
     slmaps = dict([(k,np.array([i[k] for i in slmap.samples[0]]).flatten()) for k in slmap.samples[0][0]])
     return slmaps
     
-def sl_pairsim_nSs(data, pairs, radius=3, pairwise_metric = 'correlation', h5 = 0, h5out = 'slRSA_m_nSs.hdf5'):
+def sl_pairsim_nSs(data, pairs, radius=3, pairwise_metric = 'correlation', h5 = 0, h5out = 'slRSA_m_nSs.hdf5',status_print=1):
     '''
     Runs sl_pairsim_1Ss (pariwise dissim per specified target pairs) per subject
 
@@ -495,7 +495,7 @@ def sl_pairsim_nSs(data, pairs, radius=3, pairwise_metric = 'correlation', h5 = 
     print('Beginning group level searchlight on %s Ss...' % (len(data)))
     for subjid,ds in data.iteritems():
         print('\nPreparing slRSA for subject %s' % (subjid))
-        subj_data = sl_pairsim_1Ss(ds,pairs,radius=radius,pairwise_metric=pairwise_metric)
+        subj_data = sl_pairsim_1Ss(ds,pairs,radius=radius,pairwise_metric=pairwise_metric,status_print=status_print)
         slr[subjid] = subj_data
     print('slPairsim complete for all subjects')
 
