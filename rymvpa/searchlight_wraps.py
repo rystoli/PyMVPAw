@@ -505,3 +505,17 @@ def sl_pairsim_nSs(data, pairs, radius=3, pairwise_metric = 'correlation', h5 = 
         h5save(h5out,slrall,compression=9)
         return slrall
     else: return slrall
+
+
+
+
+
+
+
+
+
+
+
+
+
+

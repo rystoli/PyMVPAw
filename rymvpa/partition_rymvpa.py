@@ -695,7 +695,6 @@ class NFoldPartitionerBWTargets(Partitioner):
         for iparts, parts in enumerate(cfgs):
             # give attribute array defining the current partition set
             pattr = self.get_partitions_attr(ds, parts)
-
             # shallow copy of the dataset
             pds = ds.copy(deep=False)
 
@@ -724,4 +723,7 @@ class NFoldPartitionerBWTargets(Partitioner):
 
             yield pds
 
+############################################################
+############################################################
+############################################################
 
