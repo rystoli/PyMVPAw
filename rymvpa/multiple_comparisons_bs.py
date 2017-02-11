@@ -86,3 +86,26 @@ def slClassPermTest_1Ss(ds, perm_count = 100, radius=3, clf = LinearCSVMC(), par
 #    nd = cv.null_dist.ca.dist_samples.samples[:,0,:]
 #    acc_nd = np.mean(nd,axis=0)
 
+
+
+##SRMT
+#from rymvpa import *
+#import glob
+#remap = fmri_dataset('remap_424.nii.gz',mask='../masks/ventral_stream_HO_mask.nii.gz')
+#permsL = []
+#for i,s in enumerate(glob.glob('526_results/nii/corrections/4*')):
+#    res = h5load(s)
+#    res = Dataset(np.transpose(res.samples[0]),fa=remap.fa)
+#    res.sa['chunks'] = [i+1 for j in range(len(res))]
+#    permsL.append(res)
+#perms = vstack(permsL)
+#clthr = GroupClusterThreshold(feature_thresh_prob=.005)
+#clthr.train(perms)
+##mean map = ...
+#
+#mean_map = fmri_dataset('526_results/nii/slSVM_2sex_526/t_slSVM_sex.nii.gz',mask='../masks/ventral_stream_HO_mask.nii.gz')[0]
+#mean_map.samples = mean_map.samples + .5
+#resClthr = clthr(mean_map)
+#resClthr.fa.clusters_fwe_thresh
+#resClthr.a.clusterstats
+
