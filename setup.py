@@ -29,3 +29,4 @@ setup(name='rymvpa',
 #>import sys
 #>sys.path.append('/home/rms620/RyMVPA/rymvpa/') #clone path
 #>from __init__ import *
+
