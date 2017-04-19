@@ -3,6 +3,7 @@ RyMVPA
 
 Wrappers &amp; additions to PyMVPA http://www.pymvpa.org/ (I swear we will pull request one day)
 
+More description at: https://rystoli.github.io/#two
 ##Purpose
 These are wrappers and additional methods for PyMVPA as used by our lab. Wrappers reduce various analyses and output to single functions, and provide an assortment of useful tools for managing pymvpa datasets. Additional methods at this point are primarily unique methods of representational similarity analysis.  
 
