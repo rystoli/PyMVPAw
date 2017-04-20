@@ -296,3 +296,30 @@ def fisherz_pearsonr_array(array, flip2pearsonr = 0):
     array = np.array( [np.arctanh(i) for i in array] )
     return array
 
+def bwtarg_class_prep( data, splitIDs ):
+    '''
+    Prepares/reformats datadict for between target classification analyses, (train/test on different targets
+
+    data: data dictionary, keys subjIDs, values pymvpa dsets
+    splitIDs: dictionary, keys are string target labels as provided in the datadict,
+              values are a list per key, where index 0 = 0 or 1, where 0 = train, 1 = test,
+              and index 1 = new label for that target. Targets must relabeled so that the 
+              classifier knows which targets to train and test on, eg, if you wanted to 
+              train on the stereotype 'aggressive', and test on the social category 'black',
+              they need to share labels, e.g., this example would train on black/asian 
+              stereotypes, then test whether they could distinguish asian/black face targets:
+              splitIDs = { 'aggressive': [0,'black'], 
+                           'black': [1,'black'], 
+                           'shy': [0, 'asian'],
+                           'asian': [1, 'asian'] }
+
+    returns: new datadict, with only targets of interest, and sample attributes splits and targets
+             relabeled appropriately to run bwtarg classification functions
+    '''
+
+    data = dict([(s,select_targets(data[s],splitIDs.keys())) for s in data])
+    for subjID in data:
+        data[subjID].sa['splits'] = [splitIDs[samp.targets[0]][0] for i,samp in enumerate(data[subjID])]
+        data[subjID].sa.targets = [splitIDs[samp.targets[0]][1] for i,samp in enumerate(data[subjID])]
+
+    return data
