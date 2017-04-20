@@ -46,7 +46,7 @@ def roi_pairsimRSA_nSs(data, target_dsm, roi_mask_nii_path, pairs, t_comp = 0, n
     pairsims = roi_pairsim_xSs(data,roi_mask_nii_path,pairs)
     if nmetric == 'pearson': pairsims_vals = [i.values() for i in pairsims.values()]
     elif nmetric == 'spearman':
-        pairsims_vals = [np.hstack([rankdata(i.values()[:(len(i)/2)]),rankdata(i.values()[(len(i)/2):])]) for i in pairsims.values()] #assumes shape
+        pairsims_vals = [rankdata(i.values()) for i in pairsims.values()] #assumes shape
     if cmetric == 'correlation':
         pairsims_RSA = [np.arctanh(pearsonr(target_dsm,i)[0]) for i in pairsims_vals]
         return pairsims_RSA,scipy.stats.ttest_1samp(pairsims_RSA,0)
