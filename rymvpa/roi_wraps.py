@@ -8,7 +8,8 @@ from datamanage import *
 ############################################
 def roi_pairsim_1Ss(ds, roi_mask_nii_path, pairs):
     '''
-    Calculates sim for all defined pairs and returns dict of pair sim values (within roi)
+    Calculates SIM for all defined pairs and returns 
+    dict of pair SIM values (within roi)
 
     ds = pymvpa dataset
     roi_mask_nii_path = path to nifti of roi mask
@@ -20,43 +21,80 @@ def roi_pairsim_1Ss(ds, roi_mask_nii_path, pairs):
     pairsim = dict((pair[0]+'-'+pair[1],pearsonr(ds[ds.sa.targets == pair[0]].samples[0], ds[ds.sa.targets == pair[1]].samples[0])[0]) for pair in pairs)
     return pairsim
 
-def roi_pairsim_xSs(data, roi_mask_nii_path, pairs):
+def roi_pairsim_nSs(data, roi_mask_nii_path, pairs):
     '''
-    Calculates sim for all defined pairs and returns dict of pair sim values (within roi, per subject)
+    Calculates neural SIM for all defined pairs and 
+    returns dict of pair SIM values (within roi, per subject)
 
     ds = pymvpa dataset
     roi_mask_nii_path = path to nifti of roi mask
     pairs = list of lists (pairs) of target names
-    t_comp = one sample t test against this value
     '''
     
     print('Calculating pairsim per n = %s, pairs = %s, in mask = %s' % (len(data),pairs,roi_mask_nii_path))
     pairsim_dict = dict((s,roi_pairsim_1Ss(data[s], roi_mask_nii_path, pairs)) for s in data)
     return pairsim_dict
 
-def roi_pairsimRSA_nSs(data, target_dsm, roi_mask_nii_path, pairs, t_comp = 0, nmetric = 'pearson', cmetric = 'correlation'):
+def roi_pairsimRSA_1Ss(ds, roi_mask_nii_path, pairs_dsm, cmetric = 'spearman', pmetric = 'correlation'):
     '''
+    Performs RSA between predictor DM and ROI with preferred 
+    DM cells (pairsimRSA) within ROI 
+
     ds = pymvpa dataset
-    target_dsms = predictor DM (make in order of alphabetical pair titles) *ASSUMES RANK ORDER DM BEFOREHAND
     roi_mask_nii_path = path to nifti of roi mask
-    pairs = list of lists (pairs) of target names
-    nmetric = pearson vs spearman for neural dissimilairty
+    pairs_dsm : Dictionary of target pairs separated by '-' (keys) and
+                corresponding predicted model dissimilarity values (values)
+    cmetric = pearson,spearman,euclidean distance for comparing neural 
+              and target_dm
+    pmetric = distance metric for calculating dissimilarity of neural patterns
+
+    Example arg: 
+            pairs_dsm = {'face-house': 1.2, 'face-car': .9, 'face-shoe': 1.11}
+
+    Returns: Fisher-z correaltion between pairs dissim vector and neural dissim vector
     '''
 
-    pairsims = roi_pairsim_xSs(data,roi_mask_nii_path,pairs)
-    if nmetric == 'pearson': pairsims_vals = [i.values() for i in pairsims.values()]
-    elif nmetric == 'spearman':
-        pairsims_vals = [rankdata(i.values()) for i in pairsims.values()] #assumes shape
-    if cmetric == 'correlation':
-        pairsims_RSA = [np.arctanh(pearsonr(target_dsm,i)[0]) for i in pairsims_vals]
-        return pairsims_RSA,scipy.stats.ttest_1samp(pairsims_RSA,0)
-    elif cmetric == 'euclidean':
-        pairsims_RSA = np.array([pdist(np.vstack([target_dsm,i])) for i in pairsims_vals])
-        pairsims_RSA = np.round((-1*pairsims_RSA) + max(pairsims_RSA))
-        return pairsims_RSA,scipy.stats.ttest_1samp(pairsims_RSA,t_comp)
+    data_m = mask_dset(ds, roi_mask_nii_path)
+    
+    tdcm = rsa_rymvpa.Pairsim_RSA(pairs_dsm,comparison_metric=cmetric,pairwise_metric=pmetric)
+    return tdcm(data_m).samples[0]
 
+def roi_pairsimRSA_nSs(data, roi_mask_nii_path, pairs_dsm, cmetric = 'spearman', pmetric = 'correlation', h5=1, h5out = 'roi_pairsimRSA.hdf5'):
+    '''
+    Performs RSA between predictor DM and ROI with preferred 
+    DM cells (pairsimRSA) within ROI
 
+    data = pymvpa datadict
+    roi_mask_nii_path = path to nifti of roi mask
+    pairs_dsm : Dictionary of target pairs separated by '-' (keys) and
+                corresponding predicted model dissimilarity values (values)
+    cmetric = pearson,spearman,euclidean distance for comparing neural 
+              and target_dm
+    pmetric = neural sim metric
 
+    Returns: results per subject
+    h5: 1 if want h5 per subj 
+    h5out: h outfilename suffix
+    '''
+
+    print('roi pairsimRSA initiated with...\n Ss: %s\nroi_mask: %s\nh5: %s\nh5out: %s' % (data.keys(),roi_mask_nii_path,h5,h5out))
+
+    ### roiRSA per subject ###
+    rsar={} #dictionary to hold reuslts per subj
+    print('Beginning group level roi analysis on %s Ss...' % (len(data)))
+
+    for subjid,ds in data.iteritems():
+        print('\Running roiRSA for subject %s' % (subjid))
+        subj_data = roi_pairsimRSA_1Ss(ds,roi_mask_nii_path,pairs_dsm,cmetric=cmetric,pmetric=pmetric)
+        rsar[subjid] = subj_data
+    print rsar
+    res = scipy.stats.ttest_1samp([s[0] for s in rsar.values()],0)
+    print('roi group level results: %s' % (str(res)))
+
+    if h5==1:
+        h5save(h5out,[res,rsar],compression=9)
+        return [res,rsar] 
+    else: return [res,rsar]
 
 
 ############################################
