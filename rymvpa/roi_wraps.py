@@ -59,7 +59,7 @@ def roi_pairsimRSA_1Ss(ds, roi_mask_nii_path, pairs_dsm, cmetric = 'spearman', p
     tdcm = rsa_rymvpa.Pairsim_RSA(pairs_dsm,comparison_metric=cmetric,pairwise_metric=pmetric)
     return tdcm(data_m).samples[0]
 
-def roi_pairsimRSA_nSs(data, roi_mask_nii_path, pairs_dsm, cmetric = 'spearman', pmetric = 'correlation', h5=1, h5out = 'roi_pairsimRSA.hdf5'):
+def roi_pairsimRSA_nSs(data, roi_mask_nii_path, pairs_dsm, cmetric = 'spearman', pmetric = 'correlation', t_comp = 0, h5=1, h5out = 'roi_pairsimRSA.hdf5'):
     '''
     Performs RSA between predictor DM and ROI with preferred 
     DM cells (pairsimRSA) within ROI
@@ -71,6 +71,7 @@ def roi_pairsimRSA_nSs(data, roi_mask_nii_path, pairs_dsm, cmetric = 'spearman',
     cmetric = pearson,spearman,euclidean distance for comparing neural 
               and target_dm
     pmetric = neural sim metric
+    t_comp = value for 1-samp ttest comparison
 
     Returns: results per subject
     h5: 1 if want h5 per subj 
@@ -88,7 +89,7 @@ def roi_pairsimRSA_nSs(data, roi_mask_nii_path, pairs_dsm, cmetric = 'spearman',
         subj_data = roi_pairsimRSA_1Ss(ds,roi_mask_nii_path,pairs_dsm,cmetric=cmetric,pmetric=pmetric)
         rsar[subjid] = subj_data
     print rsar
-    res = scipy.stats.ttest_1samp([s[0] for s in rsar.values()],0)
+    res = scipy.stats.ttest_1samp([s[0] for s in rsar.values()],t_comp)
     print('roi group level results: %s' % (str(res)))
 
     if h5==1:

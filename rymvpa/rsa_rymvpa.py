@@ -216,7 +216,6 @@ class TargetDissimilarityCorrelationMeasure_Partial(Measure):
         if self.comparison_metric=='spearman':
             dsm = rankdata(dsm)
         if self.partial_dsm == None:
-            print self.partial_dsm
             rho, p = pearsonr(dsm,self.target_dsm)
             if self.corrcoef_only:
                 return Dataset(np.array([rho,]))
