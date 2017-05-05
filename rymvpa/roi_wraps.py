@@ -128,7 +128,7 @@ def roiRSA_1Ss(ds, roi_mask_nii_path, target_dsm, partial_dsm=None, control_dsms
     res = tdcm(ds)
 
     if partial_dsm == None and control_dsms == None:
-        return 1-res.samples[1],np.arctanh(res.samples[0])
+        return np.arctanh(res.samples[0])
     elif partial_dsm != None and control_dsms == None:
         return np.arctanh(res.samples[0])
     elif partial_dsm == None and control_dsms != None:
