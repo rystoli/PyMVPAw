@@ -447,4 +447,74 @@ def roiClass_nSs(data, roi_mask_nii_path, clf = LinearCSVMC(), part = NFoldParti
 
 
 
+def roiClass_perm_1Ss( ds, roi_mask_nii_path, perms = 10000, clf = LinearCSVMC(), partitioner = NFoldPartitioner() ):
+    '''
+    Perms classification w/in ROI mask on dset, returning observed classification performance [0] and null distribution [1]
+    
+    ds = pymvpa dataset
+    roi_mask_nii_path = path to nifti of roi mask
+    perms = number of permutations
+    clf: specify classifier
+    part: specify partitioner
+    '''
+
+    datam = mask_dset(ds.copy(),roi_mask_nii_path)
+    
+    print('Data loaded: Shape/Targets/Chunks',datam.shape,datam.UT,datam.UC)
+    repeater = Repeater(count=perms)
+    permutator = AttributePermutator('targets', limit={'partitions': 1}, count=1)
+    null_cv = CrossValidation(
+        clf,
+        ChainNode(
+        [partitioner, permutator],
+        space=partitioner.get_space()),
+        postproc=mean_sample())
+    distr_est = MCNullDist(repeater, tail='left',
+        measure=null_cv,
+        enable_ca=['dist_samples'])
+    cv_mc_corr = CrossValidation(clf,
+        partitioner,
+        postproc=mean_sample(),
+        null_dist=distr_est,
+        enable_ca=['stats'])
+    print('Beggining %s permutations...' % (perms) )
+    err = cv_mc_corr(datam)
+    print('Analysis complete')
+    return err.samples[0],cv_mc_corr.null_dist.ca.dist_samples.samples[0][0]
+
+def roiClass_perm_nSs(data, roi_mask_nii_path, perms = 10000, clf = LinearCSVMC(), partitioner = NFoldPartitioner(), h5 = 0, h5out = 'roiClass_nSs.hdf5'):
+    '''
+
+    Executes classificaiton in ROI per subject in datadict 
+
+    data: dictionary of pymvpa dsets per subj, indices being subjIDs
+    roi_mask_nii_path = path to nifti of roi mask
+    perms = # of permutations
+    clf: specify classifier
+    part: specify partitioner
+    h5: 1 if want h5 per subj, 2 if include all data
+    h5out: h outfilename suffix
+    '''
+
+    print('roiClass initiated with...\n Ss: %s\nroi_mask: %s\nh5: %s\nh5out: %s' % (data.keys(),roi_mask_nii_path,h5,h5out))
+
+    ### roiClass per subject ###
+    cres_err,cres_null={},{} #dictionary to hold reuslts per subj
+    print('Beginning group level roi analysis on %s Ss...' % (len(data)))
+
+    for subjid,ds in data.iteritems():
+        cres_err[subjid],cres_null[subjid] = roi_Class_perm( data_temp[s], m, perms = perms, clf = clf, partitioner = partitioner)
+    
+    obserr = np.mean(cres_err.values())
+    nulli = np.mean(cres_null.values(),axis=0)
+    obs_p = np.sum(np.sort(nulli) < obserr)/float(len(nulli))
+
+    print('Group analysis complete with accuracy = %s, p = %s, with %s permutations' % (1 - obserr, obs_p, perms))
+    if h5==1:
+        h5save(h5out,[obserr,nulli,obs_p],compression=9)
+        return [obserr,nulli,obs_p] 
+    elif h5==2:
+        h5save(h5out,[obserr,nulli,obs_p,cres_err,cres_null],compression=9)
+        return [obserr,nulli,obs_p,cres_err,cres_null]
+    else: return [obserr,nulli,obs_p]
 
