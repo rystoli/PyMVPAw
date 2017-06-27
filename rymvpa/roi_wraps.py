@@ -446,6 +446,69 @@ def roiClass_nSs(data, roi_mask_nii_path, clf = LinearCSVMC(), part = NFoldParti
     else: return [tres,cres]
 
 
+###################################################
+# permutation testing 
+
+
+
+def dictDMshuf( dictDM ):
+    vals = dictDM.values()
+    random.shuffle(vals)
+    return dict([(dictDM.keys()[i],vals[i]) for i in range(len(pairsDM))])
+
+def roiRSA_perm_1Ss( ds, pairsDM, roi_mask_nii_path, perms = 10000 ):
+    '''
+    Perms pairsimRSA w/in ROI mask on dset, returning observed similarity [0] and null distribution [1], currently assumes spearman
+    
+    ds = pymvpa dataset
+    pairsDM = *see pairsimRSA doc
+    roi_mask_nii_path = path to nifti of roi mask
+    perms = number of permutations
+    '''
+
+    print('Data loaded: mask/DM/Targets/Chunks',roi_mask_nii_path,pairsDM,ds.UT,ds.UC)
+    res = roi_pairsimRSA_1Ss(ds, roi_mask_nii_path, pairsDM, cmetric='spearman', pmetric='correlation')
+    nulls = []
+    print('Beginning %s permutations RSA...' % (perms))
+    for i in range(perms):
+        nulls.append(roi_pairsimRSA_1Ss(ds, roi_mask_nii_path, dictDMshuf(pairsDM), cmetric='spearman', pmetric='correlation'))
+    print('Analysis complete')
+    return res,np.array(nulls)
+
+def roiRSA_perm_nSs(data, pairsDM, roi_mask_nii_path, perms = 10000, h5 = 0, h5out = 'roiRSA_nSs.hdf5'):
+    '''
+
+    Executes pairsimRSA in ROI per subject in datadict 
+
+    data: dictionary of pymvpa dsets per subj, indices being subjIDs
+    roi_mask_nii_path = path to nifti of roi mask
+    perms = # of permutations
+    pairsDM = *see pairsimRSA doc
+    h5: 1 if want h5 per subj, 2 if include all data
+    h5out: h outfilename suffix
+    '''
+
+    print('roiRSA initiated with...\n Ss: %s\nroi_mask: %s\nh5: %s\nh5out: %s' % (data.keys(),roi_mask_nii_path,h5,h5out))
+
+    ### roiRSA per subject ###
+    cres_err,cres_null={},{} #dictionary to hold reuslts per subj
+    print('Beginning group level roi analysis on %s Ss...' % (len(data)))
+
+    for subjid,ds in data.iteritems():
+        cres_err[subjid],cres_null[subjid] = roiRSA_perm_1Ss( data[subjid], pairsDM, m, perms = perms )
+    
+    obserr = np.mean(cres_err.values())
+    nulli = np.mean(cres_null.values(),axis=0)
+    obs_p = np.sum(np.sort(nulli) > obserr)/float(len(nulli))
+
+    print('Group analysis complete with sim = %s, p = %s, with %s permutations' % (obserr, obs_p, perms))
+    if h5==1:
+        h5save(h5out,[obserr,nulli,obs_p],compression=9)
+        return [obserr,nulli,obs_p] 
+    elif h5==2:
+        h5save(h5out,[obserr,nulli,obs_p,cres_err,cres_null],compression=9)
+        return [obserr,nulli,obs_p,cres_err,cres_null]
+    else: return [obserr,nulli,obs_p]
 
 def roiClass_perm_1Ss( ds, roi_mask_nii_path, perms = 10000, clf = LinearCSVMC(), partitioner = NFoldPartitioner() ):
     '''
@@ -503,7 +566,7 @@ def roiClass_perm_nSs(data, roi_mask_nii_path, perms = 10000, clf = LinearCSVMC(
     print('Beginning group level roi analysis on %s Ss...' % (len(data)))
 
     for subjid,ds in data.iteritems():
-        cres_err[subjid],cres_null[subjid] = roi_Class_perm( data_temp[s], m, perms = perms, clf = clf, partitioner = partitioner)
+        cres_err[subjid],cres_null[subjid] = roiClass_perm_1Ss( data[subjid], m, perms = perms, clf = clf, partitioner = partitioner)
     
     obserr = np.mean(cres_err.values())
     nulli = np.mean(cres_null.values(),axis=0)
@@ -517,4 +580,5 @@ def roiClass_perm_nSs(data, roi_mask_nii_path, perms = 10000, clf = LinearCSVMC(
         h5save(h5out,[obserr,nulli,obs_p,cres_err,cres_null],compression=9)
         return [obserr,nulli,obs_p,cres_err,cres_null]
     else: return [obserr,nulli,obs_p]
+
 
