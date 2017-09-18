@@ -3,6 +3,37 @@ from importer import *
 from datamanage import *
 #ROI wrappers
 
+###########################################
+# see neural DMs (RDMs) in ROI
+###########################################
+
+def roi2ndm_1Ss(ds,mask):
+    '''
+    Returns neural DSM of ROI specified via mask file
+    
+    ds: pymvpa dataset
+    mask: nifti filename of ROI mask
+    '''
+
+    ds = remove_invariant_features(mask_dset(ds,mask))
+    mgs = mean_group_sample(['targets'])(ds)
+    ndm = squareform(pdist(mgs.samples,'correlation'))
+    return ndm
+
+def roi2ndm_nSs(data, mask, avgndm = False):
+    '''
+    Runs ndsmROI on data dictionary of subjects
+
+    data: datadict, keys subjids, values pymvpa dsets
+    mask: mask filename
+    avgndm: if True, returns average ndm across subjects instead of per subject
+    '''
+
+    ndsms = dict( (s,roi2ndm_1Ss(data[s],mask)) for s in data.keys())
+    if avgndm == True: return np.mean(ndsms.values(),axis=0)
+    else: return ndsms
+
+
 ############################################
 # RSA of specific DM cells
 ############################################
