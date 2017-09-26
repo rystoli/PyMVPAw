@@ -115,7 +115,6 @@ def sl_pairsimRSA_1Ss(ds, pairs_dsm, radius=3, cmetric='spearman',status_print=1
     print('Mean group sample computed at size:',ds.shape,'...with UT:',ds.UT)
 
     print('Beginning slRSA analysis...')
-    print('hi')
     tdcm = rsa_rymvpa.Pairsim_RSA(pairs_dsm,comparison_metric=cmetric)    
     sl = sphere_searchlight(tdcm,radius=radius)
     slmap = sl(ds)
@@ -469,7 +468,6 @@ def sl_pairsim_1Ss(ds, pairs, radius=3, pairwise_metric='correlation',status_pri
 
     ds = mean_group_sample(['targets'])(ds) #make UT ds
     print('Mean group sample computed at size:',ds.shape,'...with UT:',ds.UT)
-    print('hi')
     print('Beginning slPairsim analysis...')
     psm = rsa_rymvpa.Pairsim(pairs,pairwise_metric=pairwise_metric)    
     sl = sphere_searchlight(psm,radius=radius)
