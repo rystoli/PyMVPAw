@@ -296,3 +296,44 @@ def bwtarg_class_prep( data, splitIDs ):
         data[subjID].sa.targets = [splitIDs[samp.targets[0]][1] for i,samp in enumerate(data[subjID])]
 
     return data
+
+def glass_plot_rymvpa(ds_path, ds_slice, threshold = 0, smooth = 0):
+    '''
+    Plot nilearn glass brain plots from RyMVPA saved niftis 
+    (eg, via sl2nifti or datadict2nifti) #right now functions via jupyter notebooks
+    
+    NOTE: currently only threshold to look at vals greater than threshold
+
+    ds_path: path to nifti file saved via sl2nift or datadict2nifti
+    ds_slice: slice of the nifti file to be plotted
+    threshold: thresholding (currently only plots values greater than threshold)
+    smooth: gaussian smoothing if you would prefer to apply to plot
+
+    returns: no return, provides plot (supported in jupyter)
+    '''
+    ds = fmri_dataset(ds_path)
+    ds.samples = ds.samples * (ds.samples > threshold)
+    sl2nifti(ds,ds,'temp_glass_plot_rymvpa.nii')
+    dsn_s = image.smooth_img('temp_glass_plot_rymvpa.nii',smooth)
+    pl.plot_glass_brain(image.index_img(dsn_s,ds_slice))
+    
+def plotBrain_rymvpa(ds_path, ds_slice, threshold = 0, smooth = 0):
+    '''
+    Plot nltools brainPlot plots from RyMVPA saved niftis 
+    (eg, via sl2nifti or datadict2nifti) #right now functions via jupyter notebooks
+    
+    NOTE: currently only threshold to look at vals greater than threshold
+
+    ds_path: path to nifti file saved via sl2nift or datadict2nifti
+    ds_slice: slice of the nifti file to be plotted
+    threshold: thresholding (currently only plots values greater than threshold)
+    smooth: gaussian smoothing if you would prefer to apply to plot
+
+    returns: no return, provides plot (supported in jupyter)
+    '''
+    ds = fmri_dataset(ds_path)
+    ds.samples = ds.samples * (ds.samples > threshold)
+    sl2nifti(ds,ds,'temp_plotBrain_rymvpa.nii')
+    dsn_s = image.smooth_img('temp_glass_plot_rymvpa.nii',smooth)
+    dsn_s_bd = nl.data.Brain_Data(dsn_s)
+    nl.plotting.plotBrain(dsn_s_bd[ds_slice])
