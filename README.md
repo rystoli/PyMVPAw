@@ -29,7 +29,7 @@ from rymvpa import *
 ## Contents
 
 * importer.py - imports necessary modules for others to run
-* rsa_rymvpa - our additional RSA methods (eg, do individual differences predict similarity of patterns between two conditions? and more)
+* rsa_rymvpa.py - our additional RSA methods (eg, do individual differences predict similarity of patterns between two conditions? and more)
 * datamanage.py - etc. functions for handling datasets (e.g., saving, masking, printing attributes to CSV, making ROI masks, and more)
 * searchlight_wraps.py - wrapper functions performing searchlights with various methods (classification, RSA, and our additional RSA methods)
 * roi_wraps.py - wrapper functions performing various methods on specified ROI via ROI mask (classificaiton, RSA, our additional RSA methods)
