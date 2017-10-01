@@ -38,4 +38,4 @@ from rymvpa import *
 See documentation nested in functions for now. Also, see tutorials.
 
 --------
-Thanks Zach!
+Thank to Zach Ingbretsen for plenty contribution and help!
