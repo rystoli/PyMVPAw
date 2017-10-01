@@ -37,4 +37,5 @@ from rymvpa import *
 ## Use
 See documentation nested in functions for now. Also, see tutorials.
 
+--------
 Thanks Zach!
