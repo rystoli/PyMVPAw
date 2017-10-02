@@ -14,7 +14,7 @@ These are wrappers and additional methods for PyMVPA as used by our lab. Wrapper
 
 Requirements are:
 * [PyMVPA base and dependencies](http://www.pymvpa.org/download.html) ([See this guide for easy installation on Mac and Windows](https://rystoli.github.io/blog/9_27_17.html)).
-* For plotting functions, also make sure [nilearn](http://nilearn.github.io/) and [nltools](http://neurolearn.readthedocs.io/en/latest/) are installed too. (See tutorials directory for plotting tips).
+* Also make sure [nilearn](http://nilearn.github.io/) and [nltools](http://neurolearn.readthedocs.io/en/latest/) are installed too.
 
 1. Download or clone this repository: https://github.com/rystoli/RyMVPA
 2. Use [pip](https://packaging.python.org/tutorials/installing-packages/)!
