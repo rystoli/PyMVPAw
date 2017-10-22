@@ -6,7 +6,18 @@ Wrappers &amp; additions to [PyMVPA](http://www.pymvpa.org/) (I swear we will pu
 More description [here](https://rystoli.github.io/#two).
 
 ## Purpose
-These are wrappers and additional methods for PyMVPA as used by our lab. Wrappers reduce various analyses and output to single functions, and provide an assortment of useful tools for managing pymvpa datasets. Additional methods at this point are primarily unique methods of representational similarity analysis.  
+These are wrappers and additional methods for PyMVPA as used by our lab. Wrappers reduce various analyses and output to single functions, and provide an assortment of useful tools for managing pymvpa datasets. Additional methods at this point are primarily unique methods of representational similarity analysis.  RyMVPA</a> is an unnecessarily eponymous wrapper for <a href="http://www.pymvpa.org/">PyMVPA</a>. PyMVPA is a wonderful module for MVPA, multi-variate pattern analysis, of data - especially, in my case, fMRI data. In RyMVPA, many of PyMVPA's pattern analysis tools are available in single function commands to make the magic of PyMVPA less verbose. For instance, you can run an entire searchlight multiple regression Representational Similarity Analysis with a single line of code.
+little this:
+
+```
+slRSA_m_nSs( data, target_DM, [control_DM_1 ... control_DM_k] )
+```
+
+It also comes with many additional methods and tools you may find useful:
+* Perform basic MVPA Classification and RSA analyses in single lines of code (within ROIs, searchlights, for single or all subjects)
+* Perform RSA in a multiple regression (controlling for and including additional models), only assessing certain similarity values (of the DM), or compare similarities of specific condition-pairs directly
+* See if between-subject individual differences or trial-by-trial covariates relate to the neural similarity of certain conditions
+* Train your classifier on certain targets, and test on others
 
 *We use this system by first initializing a python environment with this module imported, but importantly, data loaded as a dictionary where keys are subject IDs and values subject PyMVPA datasets ('datadicts'). Many of these functions are made to operate on these dictionaries and analyze all subjects at once.*
 
