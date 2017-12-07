@@ -165,7 +165,7 @@ class TargetDissimilarityCorrelationMeasure_Partial(Measure):
 
     def __init__(self, target_dsm, partial_dsm = None, pairwise_metric='correlation', 
                     comparison_metric='pearson', center_data = False, 
-                    corrcoef_only = False, **kwargs):
+                    **kwargs):
         """
         Initialize
 
@@ -184,9 +184,6 @@ class TargetDissimilarityCorrelationMeasure_Partial(Measure):
         center_data :       Center data by subtracting mean column values from
                             columns prior to calculating dataset dsm. 
                             Default: False
-        corrcoef_only :     If true, return only the correlation coefficient
-                            (rho), otherwise return rho and probability, p. 
-                            Default: False
         Returns
         -------
         Dataset :           Dataset contains the correlation coefficient (rho) only or
@@ -203,7 +200,6 @@ class TargetDissimilarityCorrelationMeasure_Partial(Measure):
         self.pairwise_metric = pairwise_metric
         self.comparison_metric = comparison_metric
         self.center_data = center_data
-        self.corrcoef_only = corrcoef_only
         self.partial_dsm = partial_dsm
         if comparison_metric == 'spearman' and partial_dsm != None:
             self.partial_dsm = rankdata(partial_dsm)
@@ -217,10 +213,7 @@ class TargetDissimilarityCorrelationMeasure_Partial(Measure):
             dsm = rankdata(dsm)
         if self.partial_dsm == None:
             rho, p = pearsonr(dsm,self.target_dsm)
-            if self.corrcoef_only:
-                return Dataset(np.array([rho,]))
-            else: 
-                return Dataset(np.array([rho,p]))
+            return Dataset(np.array([rho]))
         elif self.partial_dsm != None:
             rp = pcf3(dsm,self.target_dsm,self.partial_dsm)
             return Dataset(np.array([rp['rxy_z']]))
