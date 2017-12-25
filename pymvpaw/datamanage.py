@@ -299,7 +299,7 @@ def bwtarg_class_prep( data, splitIDs ):
 
 def plotteRy_Glass(ds_path, ds_slice = 0, threshold = 0, smooth = 0):
     '''
-    Plot nilearn glass brain plots from RyMVPA saved niftis 
+    Plot nilearn glass brain plots from PyMVPAw saved niftis 
     (eg, via sl2nifti or datadict2nifti) #right now functions via jupyter notebooks
     
     NOTE: currently only threshold to look at vals greater than threshold
@@ -313,13 +313,13 @@ def plotteRy_Glass(ds_path, ds_slice = 0, threshold = 0, smooth = 0):
     '''
     ds = fmri_dataset(ds_path)[ds_slice]
     ds.samples = ds.samples * (ds.samples > threshold)
-    sl2nifti(ds,ds,'temp_glass_plot_rymvpa.nii')
-    dsn_s = image.smooth_img('temp_glass_plot_rymvpa.nii',smooth)
+    sl2nifti(ds,ds,'temp_glass_plot_pymvpaw.nii')
+    dsn_s = image.smooth_img('temp_glass_plot_pymvpaw.nii',smooth)
     pl.plot_glass_brain(dsn_s)
     
 def plotteRy_Brain(ds_path, ds_slice = 0, threshold = 0, smooth = 0):
     '''
-    Plot nltools brainPlot plots from RyMVPA saved niftis 
+    Plot nltools brainPlot plots from PyMVPAw saved niftis 
     (eg, via sl2nifti or datadict2nifti) #right now functions via jupyter notebooks
     
     NOTE: currently only threshold to look at vals greater than threshold
@@ -333,8 +333,8 @@ def plotteRy_Brain(ds_path, ds_slice = 0, threshold = 0, smooth = 0):
     '''
     ds = fmri_dataset(ds_path)[ds_slice]
     ds.samples = ds.samples * (ds.samples > threshold)
-    sl2nifti(ds,ds,'temp_plotBrain_rymvpa.nii')
+    sl2nifti(ds,ds,'temp_plotBrain_pymvpaw.nii')
     print('If you specified threshold, ignore unthreshold warning')
-    dsn_s = image.smooth_img('temp_plotBrain_rymvpa.nii',smooth)
+    dsn_s = image.smooth_img('temp_plotBrain_pymvpaw.nii',smooth)
     dsn_s_bd = nl.data.Brain_Data(dsn_s)
     nl.plotting.plotBrain(dsn_s_bd)

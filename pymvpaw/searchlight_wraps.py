@@ -36,9 +36,9 @@ def slRSA_m_1Ss(ds, model, partial_dsm = None, control_dsms = None, resid = Fals
     print('Mean group sample computed at size:',ds.shape,'...with UT:',ds.UT)
 
     print('Beginning slRSA analysis...')
-    if partial_dsm == None and control_dsms == None: tdcm = rsa_rymvpa.TargetDissimilarityCorrelationMeasure_Partial(squareform(model), comparison_metric=cmetric)
-    elif partial_dsm != None and control_dsms == None: tdcm = rsa_rymvpa.TargetDissimilarityCorrelationMeasure_Partial(squareform(model), comparison_metric=cmetric, partial_dsm = squareform(partial_dsm))
-    elif partial_dsm == None and control_dsms != None: tdcm = rsa_rymvpa.TargetDissimilarityCorrelationMeasure_Regression(squareform(model), comparison_metric=cmetric, control_dsms = [squareform(dm) for dm in control_dsms], resid = resid)
+    if partial_dsm == None and control_dsms == None: tdcm = rsa_pymvpaw.TargetDissimilarityCorrelationMeasure_Partial(squareform(model), comparison_metric=cmetric)
+    elif partial_dsm != None and control_dsms == None: tdcm = rsa_pymvpaw.TargetDissimilarityCorrelationMeasure_Partial(squareform(model), comparison_metric=cmetric, partial_dsm = squareform(partial_dsm))
+    elif partial_dsm == None and control_dsms != None: tdcm = rsa_pymvpaw.TargetDissimilarityCorrelationMeasure_Regression(squareform(model), comparison_metric=cmetric, control_dsms = [squareform(dm) for dm in control_dsms], resid = resid)
     sl = sphere_searchlight(tdcm,radius=radius)
     slmap = sl(ds)
     if partial_dsm == None and control_dsms == None:
@@ -115,7 +115,7 @@ def sl_pairsimRSA_1Ss(ds, pairs_dsm, radius=3, cmetric='spearman',status_print=1
     print('Mean group sample computed at size:',ds.shape,'...with UT:',ds.UT)
 
     print('Beginning slRSA analysis...')
-    tdcm = rsa_rymvpa.Pairsim_RSA(pairs_dsm,comparison_metric=cmetric)    
+    tdcm = rsa_pymvpaw.Pairsim_RSA(pairs_dsm,comparison_metric=cmetric)    
     sl = sphere_searchlight(tdcm,radius=radius)
     slmap = sl(ds)
     return slmap.samples[0]
@@ -302,7 +302,7 @@ def slSxS_1Ss(ds, targs_comps, sample_covariable, omit = [], radius = 3, h5 = 0,
         print('Target |%s| omitted from analysis' % (om))
  
     print('Beginning slSxS analysis...')
-    SxS = rsa_rymvpa.SampleBySampleSimilarityCorrelation(targs_comps,sample_covariable)
+    SxS = rsa_pymvpaw.SampleBySampleSimilarityCorrelation(targs_comps,sample_covariable)
     sl = sphere_searchlight(SxS,radius=radius)
     slmap = sl(ds)
 
@@ -389,7 +389,7 @@ def slBDSM_xSs(data,xSs_behav,targ_comp,radius=3,h5=0,h5out='bdsm_xSs.hdf5',stat
          if group_data is None: group_data = ds
          else: group_data.append(ds)
     print('Group dataset ready including Ss: %s\nBeginning slBDSM:' % (np.unique(group_data.chunks)))
-    bdsm = rsa_rymvpa.xss_BehavioralDissimilarity(xSs_behav,targ_comp)
+    bdsm = rsa_pymvpaw.xss_BehavioralDissimilarity(xSs_behav,targ_comp)
     sl_bdsm = sphere_searchlight(bdsm,radius=radius)
     slmap_bdsm = sl_bdsm(group_data)
     print('Analysis complete with shape:',slmap_bdsm.shape)
@@ -435,7 +435,7 @@ def slBDSM_xSs_d(data,xSs_behav1,targ_comp1,xSs_behav2,targ_comp2,radius=3,h5=0,
          if group_data is None: group_data = ds
          else: group_data.append(ds)
     print('Group dataset ready including Ss: %s\nBeginning slBDSM:' % (np.unique(group_data.chunks)))
-    bdsm = rsa_rymvpa.xss_BehavioralDissimilarity_double(xSs_behav1,targ_comp1,xSs_behav2,targ_comp2)
+    bdsm = rsa_pymvpaw.xss_BehavioralDissimilarity_double(xSs_behav1,targ_comp1,xSs_behav2,targ_comp2)
     sl_bdsm = sphere_searchlight(bdsm,radius=radius)
     slmap_bdsm = sl_bdsm(group_data)
     print('Analysis complete with shape:',slmap_bdsm.shape)
@@ -469,7 +469,7 @@ def sl_pairsim_1Ss(ds, pairs, radius=3, pairwise_metric='correlation',status_pri
     ds = mean_group_sample(['targets'])(ds) #make UT ds
     print('Mean group sample computed at size:',ds.shape,'...with UT:',ds.UT)
     print('Beginning slPairsim analysis...')
-    psm = rsa_rymvpa.Pairsim(pairs,pairwise_metric=pairwise_metric)    
+    psm = rsa_pymvpaw.Pairsim(pairs,pairwise_metric=pairwise_metric)    
     sl = sphere_searchlight(psm,radius=radius)
     slmap = sl(ds)
     slmaps = dict([(k,np.array([i[k] for i in slmap.samples[0]]).flatten()) for k in slmap.samples[0][0]])

@@ -54,7 +54,7 @@ def slClassPermTest_1Ss(ds, perm_count = 100, radius = 3, clf = LinearCSVMC(), p
 ###################################
 # sample code for recombining h5saved perm tests for submission to group test
 
-#from rymvpa import *
+#from pymvpaw import *
 #import glob
 #remap = fmri_dataset('remap_424.nii.gz',mask='../masks/ventral_stream_HO_mask.nii.gz')
 #permsL = []
@@ -84,7 +84,7 @@ def Perm_GroupClusterThreshold( mean_map, perms, NN = 1, feature_thresh_prob = .
     if NN == 1: 
         clthr = GroupClusterThreshold(feature_thresh_prob=feature_thresh_prob,n_bootstrap=n_bootstrap,fwe_rate=fwe_rate)
     elif NN == 3:
-        clthr = gct_rymvpa.GroupClusterThreshold_NN3(feature_thresh_prob=feature_thresh_prob,n_bootstrap=n_bootstrap,fwe_rate=fwe_rate)
+        clthr = gct_pymvpaw.GroupClusterThreshold_NN3(feature_thresh_prob=feature_thresh_prob,n_bootstrap=n_bootstrap,fwe_rate=fwe_rate)
         
     print('Beginning to bootstrap... dont hold your breath here (has taken close to an hour for an example I did with 1600 samples in perms)')
     clthr.train(perms)

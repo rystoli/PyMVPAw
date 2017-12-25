@@ -1,4 +1,4 @@
-RyMVPA
+PyMVPAw
 =========
 
 Wrappers &amp; additions to [PyMVPA](http://www.pymvpa.org/) (I swear we will pull request one day)
@@ -6,7 +6,7 @@ Wrappers &amp; additions to [PyMVPA](http://www.pymvpa.org/) (I swear we will pu
 More description [here](https://rystoli.github.io/#two).
 
 ## Purpose
-These are wrappers and additional methods for PyMVPA as used by our lab. Wrappers reduce various analyses and output to single functions, and provide an assortment of useful tools for managing pymvpa datasets. Additional methods at this point are primarily unique methods of representational similarity analysis.  RyMVPA</a> is an unnecessarily eponymous wrapper for <a href="http://www.pymvpa.org/">PyMVPA</a>. PyMVPA is a wonderful module for MVPA, multi-variate pattern analysis, of data - especially, in my case, fMRI data. In RyMVPA, many of PyMVPA's pattern analysis tools are available in single function commands to make the magic of PyMVPA less verbose. For instance, you can run an entire searchlight multiple regression Representational Similarity Analysis with a single line of code.
+These are wrappers and additional methods for PyMVPA as used by our lab. Wrappers reduce various analyses and output to single functions, and provide an assortment of useful tools for managing pymvpa datasets. Additional methods at this point are primarily unique methods of representational similarity analysis.  PyMVPAw</a> is an unnecessarily eponymous wrapper for <a href="http://www.pymvpa.org/">PyMVPA</a>. PyMVPA is a wonderful module for MVPA, multi-variate pattern analysis, of data - especially, in my case, fMRI data. In PyMVPAw, many of PyMVPA's pattern analysis tools are available in single function commands to make the magic of PyMVPA less verbose. For instance, you can run an entire searchlight multiple regression Representational Similarity Analysis with a single line of code.
 little this:
 
 ```
@@ -27,10 +27,10 @@ Requirements are:
 * [PyMVPA base and dependencies](http://www.pymvpa.org/download.html) ([See this guide for easy installation on Mac and Windows](https://rystoli.github.io/blog/9_27_17.html)).
 * Also make sure [nilearn](http://nilearn.github.io/) and [nltools](http://neurolearn.readthedocs.io/en/latest/) are installed too.
 
-1. Download or clone this repository: https://github.com/rystoli/RyMVPA
+1. Download or clone this repository: https://github.com/rystoli/PyMVPAw
 2. Use [pip](https://packaging.python.org/tutorials/installing-packages/)!
 ```
-pip install [path to RyMVPA directory]
+pip install [path to PyMVPAw directory]
 ```
 3. Import as a whole in Python
 ```

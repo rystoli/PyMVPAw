@@ -59,7 +59,7 @@ def roi_pairsimRSA_1Ss(ds, roi_mask_nii_path, pairs_dsm, cmetric = 'spearman', p
 
     data_m = mask_dset(ds, roi_mask_nii_path)
     
-    tdcm = rsa_rymvpa.Pairsim_RSA(pairs_dsm,comparison_metric=cmetric,pairwise_metric=pmetric)
+    tdcm = rsa_pymvpaw.Pairsim_RSA(pairs_dsm,comparison_metric=cmetric,pairwise_metric=pmetric)
     return tdcm(data_m).samples[0]
 
 def roi_pairsimRSA_nSs(data, roi_mask_nii_path, pairs_dsm, cmetric = 'spearman', pmetric = 'correlation', t_comp = 0, h5=1, h5out = 'roi_pairsimRSA.hdf5'):
@@ -124,9 +124,9 @@ def roiRSA_1Ss(ds, roi_mask_nii_path, target_dsm, partial_dsm=None, control_dsms
  
     print('Beginning roiRSA analysis...')
     ds = mean_group_sample(['targets'])(data_m)
-    if partial_dsm == None and control_dsms == None: tdcm = rsa_rymvpa.TargetDissimilarityCorrelationMeasure_Partial(squareform(target_dsm), comparison_metric=cmetric)
-    elif partial_dsm != None and control_dsms == None: tdcm = rsa_rymvpa.TargetDissimilarityCorrelationMeasure_Partial(squareform(target_dsm), comparison_metric=cmetric, partial_dsm = squareform(partial_dsm))
-    elif partial_dsm == None and control_dsms != None: tdcm = rsa_rymvpa.TargetDissimilarityCorrelationMeasure_Regression(squareform(target_dsm), comparison_metric=cmetric, control_dsms = [squareform(dm) for dm in control_dsms])
+    if partial_dsm == None and control_dsms == None: tdcm = rsa_pymvpaw.TargetDissimilarityCorrelationMeasure_Partial(squareform(target_dsm), comparison_metric=cmetric)
+    elif partial_dsm != None and control_dsms == None: tdcm = rsa_pymvpaw.TargetDissimilarityCorrelationMeasure_Partial(squareform(target_dsm), comparison_metric=cmetric, partial_dsm = squareform(partial_dsm))
+    elif partial_dsm == None and control_dsms != None: tdcm = rsa_pymvpaw.TargetDissimilarityCorrelationMeasure_Regression(squareform(target_dsm), comparison_metric=cmetric, control_dsms = [squareform(dm) for dm in control_dsms])
 
     res = tdcm(ds)
 
@@ -198,7 +198,7 @@ def roiSxS_1Ss(ds, targs_comps, sample_covariable, roi_mask_nii_path):
     print('Dataset masked to shape: %s' % (str(data_m.shape)))
  
     print('Beginning roiSxS analysis...')
-    SxS = rsa_rymvpa.SampleBySampleSimilarityCorrelation(targs_comps,sample_covariable)
+    SxS = rsa_pymvpaw.SampleBySampleSimilarityCorrelation(targs_comps,sample_covariable)
     sxsr = SxS(data_m)
     #change slmap to right format
     sxsr.samples[0],sxsr.samples[1]=np.arctanh(sxsr.samples[0]),1-sxsr.samples[1]
@@ -279,7 +279,7 @@ def roiBDSM_xSs(data, xSs_behav, targ_comp, roi_mask_nii_path, h5 = 0,h5out = 'b
     group_data_m = mask_dset(group_data,roi_mask_nii_path)
     print('Group dataset masked, to size: %s' % (str(group_data_m.shape)))
 
-    bdsm = rsa_rymvpa.xss_BehavioralDissimilarity(xSs_behav,targ_comp)
+    bdsm = rsa_pymvpaw.xss_BehavioralDissimilarity(xSs_behav,targ_comp)
     roi_bdsm = bdsm(group_data_m)
     bdsmr = roi_bdsm.samples[0][0]
     print('Analysis complete with r: %s' % (str(bdsmr)))
@@ -326,7 +326,7 @@ def roiBDSM_xSs_d(data,xSs_behav1,targ_comp1,xSs_behav2,targ_comp2,roi_mask_nii_
     group_data_m = mask_dset(group_data,roi_mask_nii_path)
     print('Group dataset masked, to size: %s' % (str(group_data_m.shape)))
 
-    bdsm = rsa_rymvpa.xss_BehavioralDissimilarity_double(xSs_behav1,targ_comp1,xSs_behav2,targ_comp2)
+    bdsm = rsa_pymvpaw.xss_BehavioralDissimilarity_double(xSs_behav1,targ_comp1,xSs_behav2,targ_comp2)
     roi_bdsm = bdsm(group_data_m)
     bdsmr = roi_bdsm.samples[0][0]
     print('Analysis complete with r: %s' % (str(bdsmr)))
@@ -355,7 +355,7 @@ def roi_pairsim_1Ss(ds, roi_mask_nii_path, pairs, pairwise_metric='correlation',
 
     data_m = mask_dset(ds, roi_mask_nii_path) 
     ds = mean_group_sample(['targets'])(data_m)
-    ps = rsa_rymvpa.Pairsim(pairs,pairwise_metric=pairwise_metric)
+    ps = rsa_pymvpaw.Pairsim(pairs,pairwise_metric=pairwise_metric)
     res = ps(ds).samples[0][0]
     if fisherz == 1: res = dict( [ (p,fisherz_pearsonr_array(res[p],flip2pearsonr=1)) for p in res ] )
     return res

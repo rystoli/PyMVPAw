@@ -1,5 +1,4 @@
-#version 8/19/15
-"""New RyMVPA measures of consistency between dissimilarity matrices across chunks."""
+"""New PyMVPAw measures of consistency between dissimilarity matrices across chunks."""
 
 __docformat__ = 'restructuredtext'
 
