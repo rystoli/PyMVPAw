@@ -1,6 +1,9 @@
-#version 8/19/15
+#version 12/26/17
+
 from importer import *
 
+##################################################
+# Dataset wrangling / preparation
 ##################################################
 
 def countDig(dig,arr):
@@ -64,39 +67,7 @@ def load_subj_data(study_dir, subj_list, file_suffix='.nii.gz', attr_filename=No
 
     return data_dict
     
-    
-def sl2nifti(ds,remap,outfile):
-    '''
-    No return; converts sl output and saves nifti file to working directory
 
-    ds=array of sl results
-    remap: dataset to remap to
-    outfile: string outfile name including extension .nii.gz
-    '''
-
-    nimg = map2nifti(data=ds,dataset=remap)
-    nimg.to_filename(outfile)
-
-def datadict2nifti(datadict,remap,outdir,outprefix=''):
-    '''
-
-    No return; runs sl2nifti on dictionary of sl data files (1subbrick), saving each file based upon its dict key
-
-    datadict: dictionary of pymvpa datasets
-    remap: dataset to remap to, or dictionary per subj in datadict
-    outdir: target directory to save nifti output
-    outprefix: optional; prefix string to outfile name
-
-    TO DO: make call afni for 3ddtest...
-    '''
-
-    os.mkdir(outdir) #make directory to store data
-    for key,ds in datadict.iteritems():
-        print('Writing nifti for subject: %s' % (key))
-	if (type(remap) == dict): thisRemap=remap[key]
-        else: thisRemap = remap
-        sl2nifti(ds,thisRemap,os.path.join(outdir,'%s%s.nii.gz' % (outprefix,key)))
-        print('NIfTI successfully saved: %s' % (os.path.join(outdir,'%s%s.nii.gz' % (outprefix,key))))
 
 def omit_targets(ds,omit):
     '''
@@ -186,34 +157,6 @@ def mask_dset(ds, mask):
     flatmask = ds.a.mapper.forward1(mask)
     return ds[:, flatmask != 0]
 
-def sa2csv(dset, salist):
-    '''
-    Saves csv with SA specified
-    NEED TO FINALIZE AND MAKE DICT ONE
-    '''
-    ds = np.asarray([[j.a.subjID,j.sa.chunks[0],j.sa.targets[0],j.sa.time_indices[0],j.sa.MD[0],j.sa.ACC[0]] for i,j in enumerate(colordata[s])])
-    np.savetxt("sa_dset.csv", ds, delimiter=",", fmt='%s')
-    t = {}
-    for s in colordata:
-        t[s] = np.asarray([[j.a.subjID,j.sa.chunks[0],j.sa.targets[0],j.sa.time_indices[0],j.sa.MD[0],j.sa.ACC[0]] for i,j in enumerate(colordata[s])])
-    np.savetxt("color_txt.csv", np.vstack(t.values()), delimiter=",", fmt='%s')
-
-
-def sxs2dset(ds,mask,targs_comps):    
-    '''
-    Creates numpy dset (array) with targ similarity per sample
-
-    ds = pymvpa dset
-    mask: path to nifti binary mask file
-    targs_comps: dict, keys targets, values comparison targs
-    '''
-    ds = mask_dset(ds,mask)
-    comp_samps = mean_group_sample(['targets'])(ds)
-    for om in targs_comps.values():
-        ds = ds[ds.sa.targets != om]
-    r = np.array([(s.sa.chunks[0],s.sa.time_indices[0],s.sa.targets[0],pearsonr(s.samples[0],comp_samps[comp_samps.sa.targets == targs_comps[s.sa.targets[0]]].samples[0])[0]) for s in ds])
-    return r 
-
 def overlap_mgs(ds,mgslist,omit):
     '''
     Returns pyMVPA dataset where samples are mean neural patterns per target category, where target categories can overlap - e.g., male=whitemale+blackmale, white=whitemale+whitefemale, etc.
@@ -238,25 +181,6 @@ def overlap_mgs(ds,mgslist,omit):
 
     nds = vstack(premerge.values()) #new dataset
     return mean_group_sample(['targets'])(nds)
-
-
-
-def clust2mask(clusts_infile, clustkeys, savenifti = False, outprefix = ''):
-    '''
-    Returns dict of cluster maks arrays per specified clusters/indices via afni cluster output; can also save these as separate nifti files to be used with fmri_dataset
-
-    clusts_infile = name of nifti file from afni where each cluster is saved as unique integer
-    clustkeys: dict of clusters to be separated out and saved, where keys are indices and values are names of ROIs (used in filenaming)
-    savenifti: default False, saves each clustmask as separate nifti file
-    outprefix: prefix for outfile name
-    '''
-
-    clusts = fmri_dataset(clusts_infile)
-    clustmasks = {}
-    for i,clust in clustkeys.iteritems():
-        clustmasks[clust] = clusts.samples[0] == i
-        if savenifti == True: sl2nifti(clusts.samples[0]==i,clusts,'%s%s.nii.gz' % (outprefix,clust))
-    return clustmasks
 
 def fisherz_pearsonr_array(array, flip2pearsonr = 0):
     '''
@@ -297,14 +221,51 @@ def bwtarg_class_prep( data, splitIDs ):
 
     return data
 
+def GroupClusterThreshold_prep( null_dist_ds_list, remap, mask, h5 = 1, h5out = 'GroupClusterThreshold_prep_output.hdf5' ):
+    '''
+    Combine multiple null distribution datasets via slClassPermTest_1Ss()
+    ...into single dataset to be submitted to GroupClusterThreshold()
+    *see multiple_comparisons_pymvpaw.py
+
+    null_dist_ds_list: list of filepaths (str) per null_dist pymvpa 
+                        ...datasets generated via slClassPermTest_1Ss
+    remap: str, original dataset structure, helpful if changes were made during
+                        ...analyses, e.g., feature selection
+    mask: str, common dataset mask filepath
+
+    Returns: combined null_dist pymvpa ds, with subject as chunks
+                ...can save hdf5
+    '''
+
+    remap = fmri_dataset( remap, mask=mask )
+    permsL = []
+    for i,s in enumerate(null_dist_ds_list):
+        res = h5load(s)
+        res = Dataset(np.transpose(res.samples[0]),fa=remap.fa,a=remap.a)
+        res.sa['chunks'] = [i+1 for j in range(len(res))]
+        permsL.append(res)
+    perms = vstack(permsL)
+    perms.a = remap.a 
+
+    if h5 == 1:
+        h5save(h5out, perms, compression=9)
+        return perms
+    else: return perms
+
+
+
+##################################################
+# Plotting
+##################################################
+
 def plotteRy_Glass(ds_path, ds_slice = 0, threshold = 0, smooth = 0):
     '''
     Plot nilearn glass brain plots from PyMVPAw saved niftis 
-    (eg, via sl2nifti or datadict2nifti) #right now functions via jupyter notebooks
+    (eg, via ds2nifti or datadict2nifti) #right now functions via jupyter notebooks
     
     NOTE: currently only threshold to look at vals greater than threshold
 
-    ds_path: path to nifti file saved via sl2nift or datadict2nifti
+    ds_path: path to nifti file saved via ds2nifti or datadict2nifti
     ds_slice: slice of the nifti file to be plotted
     threshold: thresholding (currently only plots values greater than threshold)
     smooth: gaussian smoothing if you would prefer to apply to plot
@@ -313,18 +274,18 @@ def plotteRy_Glass(ds_path, ds_slice = 0, threshold = 0, smooth = 0):
     '''
     ds = fmri_dataset(ds_path)[ds_slice]
     ds.samples = ds.samples * (ds.samples > threshold)
-    sl2nifti(ds,ds,'temp_glass_plot_pymvpaw.nii')
+    ds2nifti(ds,ds,'temp_glass_plot_pymvpaw.nii')
     dsn_s = image.smooth_img('temp_glass_plot_pymvpaw.nii',smooth)
     pl.plot_glass_brain(dsn_s)
     
 def plotteRy_Brain(ds_path, ds_slice = 0, threshold = 0, smooth = 0):
     '''
     Plot nltools brainPlot plots from PyMVPAw saved niftis 
-    (eg, via sl2nifti or datadict2nifti) #right now functions via jupyter notebooks
+    (eg, via ds2nifti or datadict2nifti) #right now functions via jupyter notebooks
     
     NOTE: currently only threshold to look at vals greater than threshold
 
-    ds_path: path to nifti file saved via sl2nift or datadict2nifti
+    ds_path: path to nifti file saved via ds2nift or datadict2nifti
     ds_slice: slice of the nifti file to be plotted
     threshold: thresholding (currently only plots values greater than threshold)
     smooth: gaussian smoothing if you would prefer to apply to plot
@@ -333,8 +294,94 @@ def plotteRy_Brain(ds_path, ds_slice = 0, threshold = 0, smooth = 0):
     '''
     ds = fmri_dataset(ds_path)[ds_slice]
     ds.samples = ds.samples * (ds.samples > threshold)
-    sl2nifti(ds,ds,'temp_plotBrain_pymvpaw.nii')
+    ds2nifti(ds,ds,'temp_plotBrain_pymvpaw.nii')
     print('If you specified threshold, ignore unthreshold warning')
     dsn_s = image.smooth_img('temp_plotBrain_pymvpaw.nii',smooth)
     dsn_s_bd = nl.data.Brain_Data(dsn_s)
     nl.plotting.plotBrain(dsn_s_bd)
+
+
+
+##################################################
+# Data writing
+##################################################
+
+def ds2nifti(ds,remap,outfile):
+    '''
+    No return; converts pymvpa dataset output and saves nifti file to working directory
+
+    ds: PyMVPA dataset/or bain image numpy array
+    remap: dataset to remap to if structure has been changed (eg, feature selection)
+    outfile: string outfile name including extension .nii.gz
+    '''
+
+    nimg = map2nifti(data=ds,dataset=remap)
+    nimg.to_filename(outfile)
+
+def datadict2nifti(datadict,remap,outdir,outprefix=''):
+    '''
+
+    No return; runs ds2nifti on dictionary of sl data files (1subbrick), saving each file based upon its dict key
+
+    datadict: dictionary of pymvpa datasets
+    remap: dataset to remap to, or dictionary per subj in datadict
+    outdir: target directory to save nifti output
+    outprefix: optional; prefix string to outfile name
+
+    TO DO: make call afni for 3ddtest...
+    '''
+
+    os.mkdir(outdir) #make directory to store data
+    for key,ds in datadict.iteritems():
+        print('Writing nifti for subject: %s' % (key))
+    if (type(remap) == dict): thisRemap=remap[key]
+        else: thisRemap = remap
+        ds2nifti(ds,thisRemap,os.path.join(outdir,'%s%s.nii.gz' % (outprefix,key)))
+        print('NIfTI successfully saved: %s' % (os.path.join(outdir,'%s%s.nii.gz' % (outprefix,key))))
+
+def sa2csv(dset, salist):
+    '''
+    Saves csv with SA specified
+    NEED TO FINALIZE AND MAKE DICT ONE
+    '''
+
+    ds = np.asarray([[j.a.subjID,j.sa.chunks[0],j.sa.targets[0],j.sa.time_indices[0],j.sa.MD[0],j.sa.ACC[0]] for i,j in enumerate(colordata[s])])
+    np.savetxt("sa_dset.csv", ds, delimiter=",", fmt='%s')
+    t = {}
+    for s in colordata:
+        t[s] = np.asarray([[j.a.subjID,j.sa.chunks[0],j.sa.targets[0],j.sa.time_indices[0],j.sa.MD[0],j.sa.ACC[0]] for i,j in enumerate(colordata[s])])
+    np.savetxt("color_txt.csv", np.vstack(t.values()), delimiter=",", fmt='%s')
+
+
+def sxs2dset(ds,mask,targs_comps):    
+    '''
+    Creates numpy dset (array) with targ similarity per sample
+
+    ds = pymvpa dset
+    mask: path to nifti binary mask file
+    targs_comps: dict, keys targets, values comparison targs
+    '''
+
+    ds = mask_dset(ds,mask)
+    comp_samps = mean_group_sample(['targets'])(ds)
+    for om in targs_comps.values():
+        ds = ds[ds.sa.targets != om]
+    r = np.array([(s.sa.chunks[0],s.sa.time_indices[0],s.sa.targets[0],pearsonr(s.samples[0],comp_samps[comp_samps.sa.targets == targs_comps[s.sa.targets[0]]].samples[0])[0]) for s in ds])
+    return r 
+
+def clust2mask(clusts_infile, clustkeys, savenifti = False, outprefix = ''):
+    '''
+    Returns dict of cluster maks arrays per specified clusters/indices via afni cluster output; can also save these as separate nifti files to be used with fmri_dataset
+
+    clusts_infile = name of nifti file from afni where each cluster is saved as unique integer
+    clustkeys: dict of clusters to be separated out and saved, where keys are indices and values are names of ROIs (used in filenaming)
+    savenifti: default False, saves each clustmask as separate nifti file
+    outprefix: prefix for outfile name
+    '''
+
+    clusts = fmri_dataset(clusts_infile)
+    clustmasks = {}
+    for i,clust in clustkeys.iteritems():
+        clustmasks[clust] = clusts.samples[0] == i
+        if savenifti == True: ds2nifti(clusts.samples[0]==i,clusts,'%s%s.nii.gz' % (outprefix,clust))
+    return clustmasks

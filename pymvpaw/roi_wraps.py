@@ -1,18 +1,43 @@
-#version 8/19/15
+#version 12/26/17
+
 from importer import *
 from datamanage import *
+
 #ROI wrappers
 
+###################################################
+# permutation testing, shuffle functions
+
+def dictDMshuf( dictDM ):
+    vals = dictDM.values()
+    random.shuffle(vals)
+    return dict([(dictDM.keys()[i],vals[i]) for i in range(len(dictDM))])
+
+def DMshuffle( DM ):
+    return squareform(random.sample(squareform( DM ),len(squareform( DM ))))
+
+
+
+########################################################################################
+########################################################################################
+# Neural pattern similarity descriptives
+########################################################################################
+########################################################################################
+
 ###########################################
-# see neural DMs (RDMs) in ROI
+# Estimate neural DMs (RDMs) in ROI
 ###########################################
 
 def roi2ndm_1Ss(ds,mask):
     '''
-    Returns neural DSM of ROI specified via mask file
-    
+    Calcuate neural similarity of conditions in ROI
+  
+    ---  
     ds: pymvpa dataset
     mask: nifti filename of ROI mask
+    ---
+
+    Return: neural DSM of ROI specified via mask file
     '''
 
     ds = remove_invariant_features(mask_dset(ds,mask))
@@ -24,9 +49,13 @@ def roi2ndm_nSs(data, mask, avgndm = False):
     '''
     Runs ndsmROI on data dictionary of subjects
 
+    ---
     data: datadict, keys subjids, values pymvpa dsets
     mask: mask filename
     avgndm: if True, returns average ndm across subjects instead of per subject
+    ---
+
+    Return: Neural DM (RDM) per subject
     '''
 
     ndsms = dict( (s,roi2ndm_1Ss(data[s],mask)) for s in data.keys())
@@ -34,72 +63,12 @@ def roi2ndm_nSs(data, mask, avgndm = False):
     else: return ndsms
 
 
-############################################
-# RSA of specific DM cells
-############################################
 
-def roi_pairsimRSA_1Ss(ds, roi_mask_nii_path, pairs_dsm, cmetric = 'spearman', pmetric = 'correlation'):
-    '''
-    Performs RSA between predictor DM and ROI with preferred 
-    DM cells (pairsimRSA) within ROI 
-
-    ds = pymvpa dataset
-    roi_mask_nii_path = path to nifti of roi mask
-    pairs_dsm : Dictionary of target pairs separated by '-' (keys) and
-                corresponding predicted model dissimilarity values (values)
-    cmetric = pearson,spearman,euclidean distance for comparing neural 
-              and target_dm
-    pmetric = distance metric for calculating dissimilarity of neural patterns
-
-    Example arg: 
-            pairs_dsm = {'face-house': 1.2, 'face-car': .9, 'face-shoe': 1.11}
-
-    Returns: Fisher-z correaltion between pairs dissim vector and neural dissim vector
-    '''
-
-    data_m = mask_dset(ds, roi_mask_nii_path)
-    
-    tdcm = rsa_pymvpaw.Pairsim_RSA(pairs_dsm,comparison_metric=cmetric,pairwise_metric=pmetric)
-    return tdcm(data_m).samples[0]
-
-def roi_pairsimRSA_nSs(data, roi_mask_nii_path, pairs_dsm, cmetric = 'spearman', pmetric = 'correlation', t_comp = 0, h5=1, h5out = 'roi_pairsimRSA.hdf5'):
-    '''
-    Performs RSA between predictor DM and ROI with preferred 
-    DM cells (pairsimRSA) within ROI
-
-    data = pymvpa datadict
-    roi_mask_nii_path = path to nifti of roi mask
-    pairs_dsm : Dictionary of target pairs separated by '-' (keys) and
-                corresponding predicted model dissimilarity values (values)
-    cmetric = pearson,spearman,euclidean distance for comparing neural 
-              and target_dm
-    pmetric = neural sim metric
-    t_comp = value for 1-samp ttest comparison
-
-    Returns: results per subject
-    h5: 1 if want h5 per subj 
-    h5out: h outfilename suffix
-    '''
-
-    print('roi pairsimRSA initiated with...\n Ss: %s\nroi_mask: %s\nh5: %s\nh5out: %s' % (data.keys(),roi_mask_nii_path,h5,h5out))
-
-    ### roiRSA per subject ###
-    rsar={} #dictionary to hold reuslts per subj
-    print('Beginning group level roi analysis on %s Ss...' % (len(data)))
-
-    for subjid,ds in data.iteritems():
-        print('\Running roiRSA for subject %s' % (subjid))
-        subj_data = roi_pairsimRSA_1Ss(ds,roi_mask_nii_path,pairs_dsm,cmetric=cmetric,pmetric=pmetric)
-        rsar[subjid] = subj_data
-    print rsar
-    res = scipy.stats.ttest_1samp([s[0] for s in rsar.values()],t_comp)
-    print('roi group level results: %s' % (str(res)))
-
-    if h5==1:
-        h5save(h5out,[res,rsar],compression=9)
-        return [res,rsar] 
-    else: return [res,rsar]
-
+########################################################################################
+########################################################################################
+# Representational similarity analysis
+########################################################################################
+########################################################################################
 
 ############################################
 # Runs RSA in ROI 
@@ -109,12 +78,16 @@ def roiRSA_1Ss(ds, roi_mask_nii_path, target_dsm, partial_dsm=None, control_dsms
 
     Executes RSA on ROI with target_dm
 
-    ds = pymvpa dataset
-    roi_mask_nii_path = path to nifti of roi mask
-    target_dsm = primary DM for analysis
-    partial_dsm = DM to control for in a partial correlation
-    control_dsms = list of DMs to control for in a multiple regression
-    cmetric = comparison metric between target dm and neural dm
+    ---
+    ds: pymvpa dataset
+    roi_mask_nii_path: path to nifti of roi mask
+    target_dsm: primary DM for analysis
+    partial_dsm: DM to control for in a partial correlation
+    control_dsms: list of DMs to control for in a multiple regression
+    cmetric: comparison metric between target dm and neural dm
+    ---
+
+    Return: subject level RSA result
     '''
 
     if partial_dsm != None and control_dsms != None: raise NameError('Only set partial_dsm (partial model control) OR control_dsms (multiple regression model controls)')
@@ -146,14 +119,18 @@ def roiRSA_nSs(data, roi_mask_nii_path, target_dsm, partial_dsm=None, control_ds
 
     Executes RSA in ROI per subject in datadict 
 
+    ---
     data: dictionary of pymvpa dsets per subj, indices being subjIDs
-    roi_mask_nii_path = path to nifti of roi mask
-    target_dsm = primary DM for analysis
-    partial_dsm = DM to control for in analysis, optional
-    control_dsms = list of DMs to control for in a multiple regression
-    cmetric = comparison metric between target dm and neural dm
+    roi_mask_nii_path: path to nifti of roi mask
+    target_dsm: primary DM for analysis
+    partial_dsm: DM to control for in analysis, optional
+    control_dsms: list of DMs to control for in a multiple regression
+    cmetric: comparison metric between target dm and neural dm
     h5: 1 if want h5 per subj 
     h5out: h outfilename suffix
+    ---
+
+    Return: Group level RSA results, subject level RSA results list
     '''
 
     print('roiRSA initiated with...\n Ss: %s\nroi_mask: %s\nh5: %s\nh5out: %s' % (data.keys(),roi_mask_nii_path,h5,h5out))
@@ -175,7 +152,179 @@ def roiRSA_nSs(data, roi_mask_nii_path, target_dsm, partial_dsm=None, control_ds
         return [res,rsar] 
     else: return [res,rsar]
 
+#############################################
+# Runs RSA in ROI per 1 subject, comparing results to null distribution created via permutation testing
+#############################################
 
+def roiRSA_perm_1Ss( ds, roi_mask_nii_path, target_dsm, partial_dsm=None, control_dsms=None, perms = 10000, cmetric = 'spearman' ):
+    '''
+    Performs RSA in ROI for a subject, also performing permutation testing by
+    ...random target label shuffling
+    
+    ---
+    ds: pymvpa dataset
+    target_dm: regular (array) OR pairsim DM (dict, see pairsimRSA doc)
+    partial dsm: partial cor control DM
+    control_dsms: control dms for regression model
+    roi_mask_nii_path: path to nifti of roi mask
+    perms: number of permutations
+    cmetric: distance metric for target dm to RDM
+    ---
+
+    Return: results of RSA ROI analysis [0], and null distribution via perm testing [1] 
+    '''
+
+    print('Data loaded: mask/DM/Targets/Chunks',roi_mask_nii_path,target_dsm,ds.UT,ds.UC)
+    if type(target_dsm) == dict:
+        res = roi_pairsimRSA_1Ss(ds, roi_mask_nii_path, target_dsm, cmetric=cmetric, pmetric='correlation')
+    elif type(target_dsm) != dict and partial_dsm == None and control_dsms == None:
+        res = roiRSA_1Ss(ds, roi_mask_nii_path, target_dsm, cmetric=cmetric)
+    elif type(target_dsm) != dict and partial_dsm != None and control_dsms == None:
+        res = roiRSA_1Ss(ds, roi_mask_nii_path, target_dsm, partial_dsm = partial_dsm, cmetric=cmetric)
+    elif type(target_dsm) != dict and partial_dsm == None and control_dsms != None:
+        res = roiRSA_1Ss(ds, roi_mask_nii_path, target_dsm, control_dsms = control_dsms, cmetric=cmetric)
+    nulls = []
+    print('Beginning %s permutations RSA...' % (perms))
+    if type(target_dsm) == dict:
+        for i in range(perms):
+            nulls.append(roi_pairsimRSA_1Ss(ds, roi_mask_nii_path, dictDMshuf(target_dsm), cmetric=cmetric, pmetric='correlation'))
+    elif type(target_dsm) != dict and partial_dsm == None and control_dsms == None:
+        for i in range(perms):
+            nulls.append(roiRSA_1Ss( ds, roi_mask_nii_path, DMshuffle(target_dsm), cmetric = cmetric))
+    elif type(target_dsm) != dict and partial_dsm != None and control_dsms == None:
+        for i in range(perms):
+            nulls.append(roiRSA_1Ss( ds, roi_mask_nii_path, DMshuffle(target_dsm), partial_dsm = partial_dsm, cmetric = cmetric))
+    elif type(target_dsm) != dict and partial_dsm == None and control_dsms != None:
+        for i in range(perms):
+            nulls.append(roiRSA_1Ss( ds, roi_mask_nii_path, DMshuffle(target_dsm), control_dsms = control_dsms, cmetric = cmetric))
+    print('Analysis complete')
+    return res,np.array(nulls)
+
+#############################################
+# Runs RSA in ROI per subject, comparing results to null distribution created via permutation testing
+#############################################
+
+def roiRSA_perm_nSs(data, roi_mask_nii_path, target_dsm, partial_dsm = None, control_dsms = None, perms = 10000, cmetric = 'spearman', h5 = 0, h5out = 'roiRSA_nSs.hdf5'):
+    '''
+
+    Executes RSA in ROI per subject in datadict, along with permutation testing via
+    ...random target label shuffling
+
+    ---
+    data: dictionary of pymvpa dsets per subj, indices being subjIDs
+    target_dm: regular (array) OR pairsim DM (dict, see pairsimRSA doc)
+    partial dsm: partial cor control DM
+    control_dsms: control dms for regression model
+    roi_mask_nii_path: path to nifti of roi mask
+    perms: # of permutations
+    cmetric: distance metric for target dm to RDM
+    h5: 1 if want h5 per subj, 2 if include all data
+    h5out: h outfilename suffix
+    ---
+
+    Return: results of RSA ROI analysis, significance tested via permutation testing
+    '''
+
+    print('roiRSA initiated with...\n Ss: %s\nroi_mask: %s\nh5: %s\nh5out: %s' % (data.keys(),roi_mask_nii_path,h5,h5out))
+
+    ### roiRSA per subject ###
+    cres_err,cres_null={},{} #dictionary to hold reuslts per subj
+    print('Beginning group level roi analysis on %s Ss...' % (len(data)))
+
+    for subjid,ds in data.iteritems():
+        cres_err[subjid],cres_null[subjid] = roiRSA_perm_1Ss( data[subjid], roi_mask_nii_path, target_dsm, partial_dsm = partial_dsm, control_dsms = control_dsms, perms = perms, cmetric = cmetric )
+    
+    obserr = np.mean(cres_err.values())
+    nulli = np.mean(cres_null.values(),axis=0)
+    obs_p = np.sum(np.sort(nulli) > obserr)/float(len(nulli))
+
+    print('Group analysis complete with sim = %s, p = %s, with %s permutations' % (obserr, obs_p, perms))
+    if h5==1:
+        h5save(h5out,[obserr,nulli,obs_p],compression=9)
+        return [obserr,nulli,obs_p] 
+    elif h5==2:
+        h5save(h5out,[obserr,nulli,obs_p,cres_err,cres_null],compression=9)
+        return [obserr,nulli,obs_p,cres_err,cres_null]
+    else: return [obserr,nulli,obs_p]
+
+############################################
+# RSA of specific DM cells
+############################################
+
+def roi_pairsimRSA_1Ss(ds, roi_mask_nii_path, pairs_dsm, cmetric = 'spearman', pmetric = 'correlation'):
+    '''
+
+    Performs RSA between predictor DM and ROI with preferred 
+    ...DM cells (pairsimRSA) within ROI 
+
+    ---
+    ds: pymvpa dataset
+    roi_mask_nii_path: path to nifti of roi mask
+    pairs_dsm: Dictionary of target pairs separated by '-' (keys) and
+                corresponding predicted model dissimilarity values (values)
+                Example arg: 
+                    pairs_dsm = {'face-house': 1.2, 'face-car': .9, 'face-shoe': 1.11}
+    cmetric: pearson,spearman,euclidean distance for comparing neural 
+              and target_dm
+    pmetric: distance metric for calculating dissimilarity of neural patterns
+    ---
+
+    Return: Fisher-z correaltion between pairs dissim vector and neural dissim vector
+    '''
+
+    data_m = mask_dset(ds, roi_mask_nii_path)
+    
+    tdcm = rsa_pymvpaw.Pairsim_RSA(pairs_dsm,comparison_metric=cmetric,pairwise_metric=pmetric)
+    return tdcm(data_m).samples[0]
+
+def roi_pairsimRSA_nSs(data, roi_mask_nii_path, pairs_dsm, cmetric = 'spearman', pmetric = 'correlation', t_comp = 0, h5=1, h5out = 'roi_pairsimRSA.hdf5'):
+    '''
+
+    Performs RSA between predictor DM and ROI with preferred 
+    ...DM cells (pairsimRSA) within ROI
+
+    data: pymvpa datadict
+    roi_mask_nii_path: path to nifti of roi mask
+    pairs_dsm: Dictionary of target pairs separated by '-' (keys) and
+                corresponding predicted model dissimilarity values (values)
+    cmetric: pearson,spearman,euclidean distance for comparing neural 
+              and target_dm
+    pmetric: neural sim metric
+    t_comp: value for 1-samp ttest comparison
+    h5: 1 if want h5 per subj 
+    h5out: h outfilename suffix
+    ---
+
+    Return: group result, results per subject
+    '''
+
+    print('roi pairsimRSA initiated with...\n Ss: %s\nroi_mask: %s\nh5: %s\nh5out: %s' % (data.keys(),roi_mask_nii_path,h5,h5out))
+
+    ### roiRSA per subject ###
+    rsar={} #dictionary to hold reuslts per subj
+    print('Beginning group level roi analysis on %s Ss...' % (len(data)))
+
+    for subjid,ds in data.iteritems():
+        print('\Running roiRSA for subject %s' % (subjid))
+        subj_data = roi_pairsimRSA_1Ss(ds,roi_mask_nii_path,pairs_dsm,cmetric=cmetric,pmetric=pmetric)
+        rsar[subjid] = subj_data
+    print rsar
+    res = scipy.stats.ttest_1samp([s[0] for s in rsar.values()],t_comp)
+    print('roi group level results: %s' % (str(res)))
+
+    if h5==1:
+        h5save(h5out,[res,rsar],compression=9)
+        return [res,rsar] 
+    else: return [res,rsar]
+
+
+
+
+########################################################################################
+########################################################################################
+# Etc. Similarity-based analyses
+########################################################################################
+########################################################################################
 
 #############################################
 # Runs SampleBySampleSimilarityCorrelation in ROI
@@ -184,14 +333,14 @@ def roiRSA_nSs(data, roi_mask_nii_path, target_dsm, partial_dsm=None, control_ds
 def roiSxS_1Ss(ds, targs_comps, sample_covariable, roi_mask_nii_path):
     '''
 
-    Executes ROI SampleBySampleSimilarityCorrelation, returns corr coef (and optional p value)
+    Executes ROI SampleBySampleSimilarityCorrelation
 
-    
     data: pymvpa dset
     targs_comps: dict of trial by trial targets (keys) and their comparison targets (values) - **assumes non-interest targets omitted***
     sample_covariable:  Name of the variable (sample attribute) with a value for each sample. The distance of each sample with the comparison_sample will be correlated with this variable.
     roi_mask_nii_path: Nifti file location of binary mask for ROI
     
+    Return:  corr coef (and optional p value)
     '''    
    
     data_m = mask_dset(ds, roi_mask_nii_path)
@@ -205,7 +354,6 @@ def roiSxS_1Ss(ds, targs_comps, sample_covariable, roi_mask_nii_path):
 
     return sxsr    
 
-
 #############################################
 # Runs SampleBySampleSimilarityCorrelation in ROI per Subject
 #############################################
@@ -213,15 +361,19 @@ def roiSxS_1Ss(ds, targs_comps, sample_covariable, roi_mask_nii_path):
 def roiSxS_nSs(data, targs_comps, sample_covariable, roi_mask_nii_path, h5 = 0, h5out = 'roiSxS_nSs.hdf5'):
     '''
 
-    Executes searchlight SampleBySampleSimilarityCorrelation, returns corr coef (and optional p value) per voxel
+    Executes searchlight SampleBySampleSimilarityCorrelation
 
     ***assumes anything not in targs_comps is omitted***
 
+    ---
     data: dictionary of pymvpa dsets per subj, indices being subjIDs
     targs_comps: dict of trial by trial targets (keys) and their comparison targets (values) - **assumes non-interest targets omitted***
     sample_covariable:  Name of the variable (sample attribute) with a value for each sample. The distance of each sample with the comparison_sample will be correlated with this variable.
     h5: 1 if want h5 per subj 
-    h5out: h outfilename suffix
+    h5out: h5 outfilename suffix
+    ---
+
+    Return: corr coef (and optional p value) per voxel
     '''        
     
     print('roiSxS initiated with...\n Ss: %s\ncomparison sample: %s\nsample covariable: %s\nroi_mask: %s\nh5: %s\nh5out: %s' % (data.keys(),targs_comps,sample_covariable,roi_mask_nii_path,h5,h5out))
@@ -244,14 +396,15 @@ def roiSxS_nSs(data, targs_comps, sample_covariable, roi_mask_nii_path, h5 = 0, 
 
 
 ##############################################
-# BDSM ROI
+# Behavioral b/w subject similarity analyses ROI
 ###############################################
 
 def roiBDSM_xSs(data, xSs_behav, targ_comp, roi_mask_nii_path, h5 = 0,h5out = 'bdsm_roi.hdf5'):
     '''
     
-    Returns correlation of subject-level behav sim with subject-level neural sim between two targs
+    Correlation of subject-level behav sim with subject-level neural sim between two targs
 
+    ---
     data: dictionary of pymvpa dsets per subj, indices being subjIDs
     xSs_behav: Dictionary of behavioral value between subjects to be
                correlated with intrasubject neural similarity (subjects are keys)
@@ -259,6 +412,9 @@ def roiBDSM_xSs(data, xSs_behav, targ_comp, roi_mask_nii_path, h5 = 0,h5out = 'b
     roi_mask_nii_path: Nifti file location of binary  mask for ROI
     h5: 1 saves hdf5 of output as well 
     h5out: hdf5 outfilename
+    ---
+
+    Return: Correlation coefficient
     
     '''   
 
@@ -291,14 +447,15 @@ def roiBDSM_xSs(data, xSs_behav, targ_comp, roi_mask_nii_path, h5 = 0,h5out = 'b
 
 
 ###############################################
-# BDSM ROI double
+# Behavioral b/w subject similarity analyses ROI, double - combining multiple similarity comparisons
 ###############################################
 
 def roiBDSM_xSs_d(data,xSs_behav1,targ_comp1,xSs_behav2,targ_comp2,roi_mask_nii_path,h5=0,h5out='bdsm_xSs.hdf5'):
     '''
     
-    Returns correlation of subject-level behav sim with subject-level neural sim between two targs
+    Correlation of subject-level behav sim with subject-level neural sim between pair of two targs
 
+    ---
     data: dictionary of pymvpa dsets per subj, indices being subjIDs
     xSs_behav: Dictionary of behavioral value between subjects to be
                correlated with intrasubject neural similarity (subjects are keys)
@@ -306,7 +463,9 @@ def roiBDSM_xSs_d(data,xSs_behav1,targ_comp1,xSs_behav2,targ_comp2,roi_mask_nii_
     roi_mask_nii_path: path to nifti mask file for ROI
     h5: 1 saves hdf5 of output as well 
     h5out: hdf5 outfilename
-    
+    ---
+
+    Return: Correlation coefficient
     '''   
 
     print('xSs BDSM initiated with...\n Ss: %s \n targ_comp1: %s\n targ_comp2: %s\n mask_roi: %s\nh5: %s\nh5out: %s' % (data.keys(),targ_comp1,targ_comp2,roi_mask_nii_path,h5,h5out))
@@ -336,21 +495,25 @@ def roiBDSM_xSs_d(data,xSs_behav1,targ_comp1,xSs_behav2,targ_comp2,roi_mask_nii_
         return bdsmr
     else: return bdsmr
 
+
 ####################################################
 # Pairsim ROI
 ###################################################
 
 def roi_pairsim_1Ss(ds, roi_mask_nii_path, pairs, pairwise_metric='correlation', fisherz=1):
     '''
-    Calculates (dis)similarities b/w all specified pairs of targets inside an ROI
+    Calculates (dis)similarities b/w all specified pairs of targets inside an ROI,
+    ...one use being ANOVA comparing similarity values between conditions
 
-    ds = pymvpa dataset
-    roi_mask_nii_path = path to nifti of roi mask
-    pairs = list of lists (pairs) of target names
-    pairwise_metric = distance metric to be used
-    fisherz = 1 if should flip cor distance to pearson r and fisher z
+    ---
+    ds: pymvpa dataset
+    roi_mask_nii_path: path to nifti of roi mask
+    pairs: list of lists (pairs) of target names
+    pairwise_metric: distance metric to be used
+    fisherz: 1 if should flip cor distance to pearson r and fisher z
+    ---
 
-    Returns dict with pair names (keys) and pair dissimilarity values (values)
+    Return: dict with pair names (keys) and pair dissimilarity values (values)
     '''
 
     data_m = mask_dset(ds, roi_mask_nii_path) 
@@ -362,17 +525,22 @@ def roi_pairsim_1Ss(ds, roi_mask_nii_path, pairs, pairwise_metric='correlation',
     
 def roi_pairsim_nSs(data, roi_mask_nii_path, pairs, pairwise_metric='correlation', fisherz=1, csv=1, csvout = 'roi_pairsim_nSs.csv'):
     '''
-    Calculates (dis)similarities b/w all specified pairs of targets inside an ROI, per subject
 
-    ds = pymvpa dataset
-    roi_mask_nii_path = path to nifti of roi mask
-    pairs = list of lists (pairs) of target names
-    pairwise_metric = distance metric to be used
-    fisherz = 1 if should flip cor distance to pearson r and fisher z
-    csv = 1 if desire to save output csv of results
-    csvout = filename of csv to be saved if csv == 1
+    Calculates (dis)similarities b/w all specified pairs of targets inside an ROI, per subject,
+    ...one use being ANOVA comparing similarity values between conditions
 
-    Returns dict with each subject (keys), and dicts of pair sims (vlaues) as dictionaries with pair names (keys) and pair dissimilarity values (values)
+    ---
+    ds: pymvpa dataset
+    roi_mask_nii_path: path to nifti of roi mask
+    pairs: list of lists (pairs) of target names
+    pairwise_metric: distance metric to be used
+    fisherz: 1 if should flip cor distance to pearson r and fisher z
+    csv: 1 if desire to save output csv of results
+    csvout: filename of csv to be saved if csv == 1
+    ---
+
+    Return: dict with each subject (keys), and dicts of pair sims (vlaues) as 
+            ...dictionaries with pair names (keys) and pair dissimilarity values (values)
     '''
 
     res = dict ( [ (s,roi_pairsim_1Ss(data[s],roi_mask_nii_path,pairs,pairwise_metric=pairwise_metric,fisherz=fisherz)) for s in data ] )
@@ -380,21 +548,28 @@ def roi_pairsim_nSs(data, roi_mask_nii_path, pairs, pairwise_metric='correlation
     if csv == 1: pd.DataFrame(res).transpose().to_csv(csvout,sep=',')
     return res
 
-#########################################################
-#########################################################
-#########################################################
-# Classification
-########################################################
+
+
+
+########################################################################################
+########################################################################################
+# Classification analyses
+########################################################################################
+########################################################################################
 
 def roiClass_1Ss(ds, roi_mask_nii_path, clf = LinearCSVMC(), part = NFoldPartitioner()):
     '''
 
     Executes classification on ROI with target_dm
 
-    ds = pymvpa dataset
-    roi_mask_nii_path = path to nifti of roi mask
+    ---
+    ds: pymvpa dataset
+    roi_mask_nii_path: path to nifti of roi mask
     clf: specify classifier
     part: specify partitioner
+    ---
+
+    Return: Classification accuracy subracting chance level given number of targets
     '''
 
     data_m = mask_dset(ds, roi_mask_nii_path)
@@ -421,12 +596,16 @@ def roiClass_nSs(data, roi_mask_nii_path, clf = LinearCSVMC(), part = NFoldParti
 
     Executes classificaiton in ROI per subject in datadict 
 
+    ---
     data: dictionary of pymvpa dsets per subj, indices being subjIDs
-    roi_mask_nii_path = path to nifti of roi mask
+    roi_mask_nii_path: path to nifti of roi mask
     clf: specify classifier
     part: specify partitioner
     h5: 1 if want h5 per subj 
     h5out: h outfilename suffix
+    ---
+    
+    Return: Group level classification results, individual subject classification results (all minus chance)
     '''
 
     print('roiClass initiated with...\n Ss: %s\nroi_mask: %s\nh5: %s\nh5out: %s' % (data.keys(),roi_mask_nii_path,h5,h5out))
@@ -449,105 +628,24 @@ def roiClass_nSs(data, roi_mask_nii_path, clf = LinearCSVMC(), part = NFoldParti
     else: return [tres,cres]
 
 
-###################################################
-# permutation testing 
-
-
-
-def dictDMshuf( dictDM ):
-    vals = dictDM.values()
-    random.shuffle(vals)
-    return dict([(dictDM.keys()[i],vals[i]) for i in range(len(dictDM))])
-
-def DMshuffle( DM ):
-    return squareform(random.sample(squareform( DM ),len(squareform( DM ))))
-
-def roiRSA_perm_1Ss( ds, roi_mask_nii_path, target_dsm, partial_dsm=None, control_dsms=None, perms = 10000, cmetric = 'spearman' ):
-    '''
-    Perms pairsimRSA w/in ROI mask on dset, returning observed similarity [0] and null distribution [1], currently assumes spearman
-    
-    ds = pymvpa dataset
-    target_dm = regular (array) OR pairsim DM (dict, see pairsimRSA doc)
-    partial dsm = partial cor control DM
-    control_dsms = control dms for regression model
-    roi_mask_nii_path = path to nifti of roi mask
-    perms = number of permutations
-    cmetric = distance metric for target dm to RDM
-    '''
-
-    print('Data loaded: mask/DM/Targets/Chunks',roi_mask_nii_path,target_dsm,ds.UT,ds.UC)
-    if type(target_dsm) == dict:
-        res = roi_pairsimRSA_1Ss(ds, roi_mask_nii_path, target_dsm, cmetric=cmetric, pmetric='correlation')
-    elif type(target_dsm) != dict and partial_dsm == None and control_dsms == None:
-        res = roiRSA_1Ss(ds, roi_mask_nii_path, target_dsm, cmetric=cmetric)
-    elif type(target_dsm) != dict and partial_dsm != None and control_dsms == None:
-        res = roiRSA_1Ss(ds, roi_mask_nii_path, target_dsm, partial_dsm = partial_dsm, cmetric=cmetric)
-    elif type(target_dsm) != dict and partial_dsm == None and control_dsms != None:
-        res = roiRSA_1Ss(ds, roi_mask_nii_path, target_dsm, control_dsms = control_dsms, cmetric=cmetric)
-    nulls = []
-    print('Beginning %s permutations RSA...' % (perms))
-    if type(target_dsm) == dict:
-        for i in range(perms):
-            nulls.append(roi_pairsimRSA_1Ss(ds, roi_mask_nii_path, dictDMshuf(target_dsm), cmetric=cmetric, pmetric='correlation'))
-    elif type(target_dsm) != dict and partial_dsm == None and control_dsms == None:
-        for i in range(perms):
-            nulls.append(roiRSA_1Ss( ds, roi_mask_nii_path, DMshuffle(target_dsm), cmetric = cmetric))
-    elif type(target_dsm) != dict and partial_dsm != None and control_dsms == None:
-        for i in range(perms):
-            nulls.append(roiRSA_1Ss( ds, roi_mask_nii_path, DMshuffle(target_dsm), partial_dsm = partial_dsm, cmetric = cmetric))
-    elif type(target_dsm) != dict and partial_dsm == None and control_dsms != None:
-        for i in range(perms):
-            nulls.append(roiRSA_1Ss( ds, roi_mask_nii_path, DMshuffle(target_dsm), control_dsms = control_dsms, cmetric = cmetric))
-    print('Analysis complete')
-    return res,np.array(nulls)
-
-def roiRSA_perm_nSs(data, roi_mask_nii_path, target_dsm, partial_dsm = None, control_dsms = None, perms = 10000, cmetric = 'spearman', h5 = 0, h5out = 'roiRSA_nSs.hdf5'):
-    '''
-
-    Executes pairsimRSA in ROI per subject in datadict 
-
-    data = dictionary of pymvpa dsets per subj, indices being subjIDs
-    target_dm = regular (array) OR pairsim DM (dict, see pairsimRSA doc)
-    partial dsm = partial cor control DM
-    control_dsms = control dms for regression model
-    roi_mask_nii_path = path to nifti of roi mask
-    perms = # of permutations
-    cmetric = distance metric for target dm to RDM
-    h5: 1 if want h5 per subj, 2 if include all data
-    h5out: h outfilename suffix
-    '''
-
-    print('roiRSA initiated with...\n Ss: %s\nroi_mask: %s\nh5: %s\nh5out: %s' % (data.keys(),roi_mask_nii_path,h5,h5out))
-
-    ### roiRSA per subject ###
-    cres_err,cres_null={},{} #dictionary to hold reuslts per subj
-    print('Beginning group level roi analysis on %s Ss...' % (len(data)))
-
-    for subjid,ds in data.iteritems():
-        cres_err[subjid],cres_null[subjid] = roiRSA_perm_1Ss( data[subjid], roi_mask_nii_path, target_dsm, partial_dsm = partial_dsm, control_dsms = control_dsms, perms = perms, cmetric = cmetric )
-    
-    obserr = np.mean(cres_err.values())
-    nulli = np.mean(cres_null.values(),axis=0)
-    obs_p = np.sum(np.sort(nulli) > obserr)/float(len(nulli))
-
-    print('Group analysis complete with sim = %s, p = %s, with %s permutations' % (obserr, obs_p, perms))
-    if h5==1:
-        h5save(h5out,[obserr,nulli,obs_p],compression=9)
-        return [obserr,nulli,obs_p] 
-    elif h5==2:
-        h5save(h5out,[obserr,nulli,obs_p,cres_err,cres_null],compression=9)
-        return [obserr,nulli,obs_p,cres_err,cres_null]
-    else: return [obserr,nulli,obs_p]
+#############################################
+# Runs Class in ROI in 1 subject, with permutation null dist estimation
+#############################################
 
 def roiClass_perm_1Ss( ds, roi_mask_nii_path, perms = 10000, clf = LinearCSVMC(), partitioner = NFoldPartitioner() ):
     '''
-    Perms classification w/in ROI mask on dset, returning observed classification performance [0] and null distribution [1]
+
+    Perms classification w/in ROI mask on dset
     
-    ds = pymvpa dataset
-    roi_mask_nii_path = path to nifti of roi mask
-    perms = number of permutations
+    ---
+    ds: pymvpa dataset
+    roi_mask_nii_path: path to nifti of roi mask
+    perms:  number of permutations
     clf: specify classifier
     part: specify partitioner
+    ---
+
+    Return: Subject observed classification performance [0], and null distribution [1]
     '''
 
     datam = mask_dset(ds.copy(),roi_mask_nii_path)
@@ -574,18 +672,27 @@ def roiClass_perm_1Ss( ds, roi_mask_nii_path, perms = 10000, clf = LinearCSVMC()
     print('Analysis complete')
     return err.samples[0],cv_mc_corr.null_dist.ca.dist_samples.samples[0][0]
 
+#############################################
+# Runs Class in ROI per subject, with permutation significance testing
+#############################################
+
 def roiClass_perm_nSs(data, roi_mask_nii_path, perms = 10000, clf = LinearCSVMC(), partitioner = NFoldPartitioner(), h5 = 0, h5out = 'roiClass_nSs.hdf5'):
     '''
 
-    Executes classificaiton in ROI per subject in datadict 
+    Executes classificaiton in ROI per subject in datadict, with permutation significance
+    ...testing, via random shuffling of target labels
 
+    ---
     data: dictionary of pymvpa dsets per subj, indices being subjIDs
-    roi_mask_nii_path = path to nifti of roi mask
-    perms = # of permutations
+    roi_mask_nii_path: path to nifti of roi mask
+    perms: # of permutations
     clf: specify classifier
     part: specify partitioner
     h5: 1 if want h5 per subj, 2 if include all data
     h5out: h outfilename suffix
+    ---
+
+    Return: observed classificiation accuracy [1], null distributions [2], and perm signifiance test result [3]
     '''
 
     print('roiClass initiated with...\n Ss: %s\nroi_mask: %s\nh5: %s\nh5out: %s' % (data.keys(),roi_mask_nii_path,h5,h5out))

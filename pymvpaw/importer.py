@@ -1,5 +1,7 @@
-#version 8/19/15
-#imports modules needed by other scripts
+#version 12/26/17
+
+# imports modules needed by other scripts
+
 from mvpa2.suite import *
 import os
 import pylab as pylab

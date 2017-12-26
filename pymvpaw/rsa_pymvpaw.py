@@ -1,3 +1,7 @@
+#version 12/26/17
+
+# PyMVPAw RSA algorithms
+
 """New PyMVPAw measures of consistency between dissimilarity matrices across chunks."""
 
 __docformat__ = 'restructuredtext'
@@ -69,7 +73,7 @@ def pcf3(X,Y,Z):
 
 
 ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ##
-# FANCY RSA FUNCTIONS
+# PyMVPAw RSA FUNCTIONS
 ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ##
 
 class TargetDissimilarityCorrelationMeasure_Regression(Measure):
@@ -375,9 +379,6 @@ class xss_BehavioralDissimilarity_double(Measure):
         return Dataset(np.array([np.arctanh(xSs_corr[0])])) 
 
 
-
-
-
 class SampleBySampleSimilarityCorrelation(Measure):
     """
     Sample by sample similarity correlation `Measure`. Computes the dissimilarity of each designated sample with another specified sample(s), then returns the correlations of that distance with any variable with a value for each sample. E.g., one could have samples be betas per trial, and measure if reaction time predicts similarity between one condition and the average representation of another condition. 
@@ -458,7 +459,7 @@ class SampleBySampleSimilarityCorrelation(Measure):
         if self.corrcoef_only:
             return Dataset(np.array([rho,]))
         else:
-            return Dataset(np.array([rho,p]))
+            return Dataset(np.array([rho,]))
 
 
 class Pairsim(Measure):

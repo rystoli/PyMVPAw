@@ -1,4 +1,4 @@
-#version 8/19/15
+#version 12/26/17
 """
 pymvpaw is a Python wrapper for pymvpa to enable faster 
 access to some pymvpa analyses, with sane defaults.
@@ -26,18 +26,3 @@ from roi_wraps import *
 from searchlight_wraps import *
 from partition_pymvpaw import *
 from multiple_comparisons_wraps import *
-
-#############################################################
-#TO DO:
-#############################################################
-
-#for integration still need to get everything to load proper, make omit optional...
-
-#*****   allow slRSA functions kwargs to use overlap_mgs instead of default mgs; issue may be that overlap_msg() requires omit submitted directly to it? nope, not issue just need to include?
-
-#RSA ROI analyses
-
-#classification, train on one target, test on others
-#more flexible classification output
-
-
