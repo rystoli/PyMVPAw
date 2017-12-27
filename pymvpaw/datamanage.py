@@ -255,8 +255,43 @@ def GroupClusterThreshold_prep( null_dist_ds_list, remap, mask, h5 = 1, h5out = 
 
 
 ##################################################
-# Plotting
+# Viewing data / Plotting
 ##################################################
+
+def roi2ndm_1Ss(ds,mask):
+    '''
+    Calcuate neural similarity of conditions in ROI
+  
+    ---  
+    ds: pymvpa dataset
+    mask: nifti filename of ROI mask
+    ---
+
+    Return: neural DSM of ROI specified via mask file
+    '''
+
+    ds = remove_invariant_features(mask_dset(ds,mask))
+    mgs = mean_group_sample(['targets'])(ds)
+    ndm = squareform(pdist(mgs.samples,'correlation'))
+    return ndm
+
+def roi2ndm_nSs(data, mask, avgndm = False):
+    '''
+    Runs ndsmROI on data dictionary of subjects
+
+    ---
+    data: datadict, keys subjids, values pymvpa dsets
+    mask: mask filename
+    avgndm: if True, returns average ndm across subjects instead of per subject
+    ---
+
+    Return: Neural DM (RDM) per subject
+    '''
+
+    ndsms = dict( (s,roi2ndm_1Ss(data[s],mask)) for s in data.keys())
+    if avgndm == True: return np.mean(ndsms.values(),axis=0)
+    else: return ndsms
+
 
 def plotteRy_Glass(ds_path, ds_slice = 0, threshold = 0, smooth = 0):
     '''
