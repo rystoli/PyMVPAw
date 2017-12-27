@@ -369,8 +369,8 @@ def datadict2nifti(datadict,remap,outdir,outprefix=''):
     os.mkdir(outdir) #make directory to store data
     for key,ds in datadict.iteritems():
         print('Writing nifti for subject: %s' % (key))
-    if (type(remap) == dict): thisRemap=remap[key]
-        else: thisRemap = remap
+        if (type(remap) == dict): thisRemap=remap[key]
+    	else: thisRemap = remap
         ds2nifti(ds,thisRemap,os.path.join(outdir,'%s%s.nii.gz' % (outprefix,key)))
         print('NIfTI successfully saved: %s' % (os.path.join(outdir,'%s%s.nii.gz' % (outprefix,key))))
 
