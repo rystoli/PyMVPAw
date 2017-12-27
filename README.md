@@ -43,7 +43,9 @@ from rymvpa import *
 
 ## Use
 See
-*  documentation nested in functions for now. Also, see tutorials.
+* The [PyMVPAw functions overview wiki](https://github.com/rystoli/PyMVPAw/wiki)
+* Documentation nested in functions (e.g., via help and ? python functionality)
+* Jupyter notebook [tutorials](https://github.com/rystoli/PyMVPAw/tree/master/tutorials)
 
 --------
 Thank to Zach Ingbretsen for plenty contribution and help!
