@@ -48,7 +48,7 @@ See:
 * Jupyter notebook [tutorials](https://github.com/rystoli/PyMVPAw/tree/master/tutorials)
 
 ## To-do
-* Redesign group analyses to load data on the fly, to save RAM
+* Redesign group analyses to load data on the fly (to save memory)
 * Create more flexible output from classification
 * Cross-validation for RSA
 
