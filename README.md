@@ -42,10 +42,15 @@ from rymvpa import *
 * multiple_comparisons_wraps.py - wrapper functions for whole-brain multiple comparison corrections
 
 ## Use
-See
+See:
 * The [PyMVPAw functions overview wiki](https://github.com/rystoli/PyMVPAw/wiki)
 * Documentation nested in functions (e.g., via help and ? python functionality)
 * Jupyter notebook [tutorials](https://github.com/rystoli/PyMVPAw/tree/master/tutorials)
+
+## To-do
+* Redesign group analyses to load data on the fly, to save RAM
+* Create more flexible output from classification
+* Cross-validation for RSA
 
 --------
 Thank to Zach Ingbretsen for plenty contribution and help!
