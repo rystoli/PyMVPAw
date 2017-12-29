@@ -51,6 +51,7 @@ See:
 * Redesign group analyses to load data on the fly (to save memory)
 * Create more flexible output from classification
 * Cross-validation for RSA
+* Develop pairsim option into flexible ANOVA w/in and b/w subjects (supplanting behavioralDSM measure)
 
 --------
 Thank to Zach Ingbretsen for plenty contribution and help!
