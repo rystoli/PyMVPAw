@@ -442,7 +442,7 @@ def sl_pairsim_1Ss(ds, pairs, radius=3, pairwise_metric='correlation',status_pri
 
     ---
     ds: pymvpa dsets for 1 subj
-    pairs: pairs to get neural sim of
+    pairs: list, of lists of target-pairs to get neural sim of
     cmetric: spearman or eucldiean
     status_print: if 1, prints status of searchlight (progress)
     ---
@@ -469,7 +469,7 @@ def sl_pairsim_nSs(data, pairs, radius=3, pairwise_metric = 'correlation', h5 = 
 
     ---
     data: dictionary of pymvpa dsets per subj, indices being subjIDs
-    pairs: bla
+    pairs: list, of lists of target-pairs to get neural sim of
     pairwise_metric: metric for neural dis(sim)
     h5: 1 if you want to save hdf5 as well
     h5out: hdf5 outfilename
