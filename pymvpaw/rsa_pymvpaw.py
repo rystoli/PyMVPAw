@@ -493,7 +493,6 @@ class Pairsim(Measure):
         Measure.__init__(self, **kwargs)
         self.pairs = pairs
         self.pairwise_metric = pairwise_metric
-        print 'init'
 
     def _call(self,dataset):
 
@@ -557,8 +556,7 @@ class Pairsim_RSA(Measure):
         self.pairs = [i.split('-') for i in self.pairs_dsm.keys()]
 
     def _call(self,dataset):
-        print 'hii'
-        print dataset.UT
+
         #compute comparison sample
         ds = mean_group_sample(['targets'])(dataset)
         # Get neural dissim b/w pairs of targets
