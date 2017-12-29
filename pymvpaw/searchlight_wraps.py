@@ -463,7 +463,7 @@ def sl_pairsim_1Ss(ds, pairs, radius=3, pairwise_metric='correlation',status_pri
     slmaps = dict([(k,np.array([i[k] for i in slmap.samples[0]]).flatten()) for k in slmap.samples[0][0]])
     return slmaps
     
-def sl_pairsim_nSs(data, pairs, radius=3, pairwise_metric = 'correlation', h5 = 0, h5out = 'slRSA_m_nSs.hdf5',status_print=1):
+def sl_pairsim_nSs(data, pairs, radius=3, pairwise_metric = 'correlation', h5 = 0, h5out = 'sl_pairsim_nSs.hdf5',status_print=1):
     '''
     Runs sl_pairsim_1Ss (pariwise dissim per specified target pairs) per subject
 
