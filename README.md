@@ -1,7 +1,7 @@
 PyMVPAw
 =========
 
-Wrappers &amp; additions to [PyMVPA](http://www.pymvpa.org/) (I swear we will pull request one day)
+Wrappers &amp; additions to [PyMVPA](http://www.pymvpa.org/) 
 
 ## Purpose
 These are wrappers and additional methods for PyMVPA as used by our lab. Wrappers reduce various analyses and output to single functions, and provide an assortment of useful tools for managing pymvpa datasets. Additional methods at this point are primarily unique methods of representational similarity analysis.  PyMVPAw</a> is an unnecessarily eponymous wrapper for <a href="http://www.pymvpa.org/">PyMVPA</a>. PyMVPA is a wonderful module for MVPA, multi-variate pattern analysis, of data - especially, in my case, fMRI data. In PyMVPAw, many of PyMVPA's pattern analysis tools are available in single function commands to make the magic of PyMVPA less verbose. For instance, you can run an entire searchlight multiple regression Representational Similarity Analysis with a single line of code:
@@ -29,13 +29,13 @@ pip install [path to PyMVPAw directory]
 ```
 3. Import as a whole in Python
 ```
-from rymvpa import *
+from pymvpaw import *
 ```
 
 ## Contents
 
 * importer.py - imports necessary modules for others to run
-* rsa_rymvpa.py - our additional RSA methods (eg, do individual differences predict similarity of patterns between two conditions? and more)
+* rsa_pymvpaw.py - our additional RSA methods (eg, do individual differences predict similarity of patterns between two conditions? and more)
 * datamanage.py - etc. functions for handling datasets (e.g., saving, masking, printing attributes to CSV, making ROI masks, and more)
 * searchlight_wraps.py - wrapper functions performing searchlights with various methods (classification, RSA, and our additional RSA methods)
 * roi_wraps.py - wrapper functions performing various methods on specified ROI via ROI mask (classificaiton, RSA, our additional RSA methods)
