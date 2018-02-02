@@ -438,7 +438,7 @@ def slBDSM_xSs_d(data,xSs_behav1,targ_comp1,xSs_behav2,targ_comp2,radius=3,h5=0,
 
 def sl_pairsim_1Ss(ds, pairs, radius=3, pairwise_metric='correlation',status_print=1):
     '''
-    Gets pairwise (dis)similarity between specified target pairs in a searchlight
+    Gets pairwise dissimilarity between specified target pairs in a searchlight
 
     ---
     ds: pymvpa dsets for 1 subj
@@ -545,7 +545,7 @@ def slClass_1Ss(ds, radius=3, clf = LinearCSVMC(), part = NFoldPartitioner(), pa
    
 
 ##############################################
-# Runs group level slRSA with defined model
+# Runs group level slClass with defined model
 ###############################################
 
 def slClass_nSs(data, radius=3, clf = LinearCSVMC(), part = NFoldPartitioner(), partmean = 1, h5 = 0, h5out = 'slSVM_nSs.hdf5',status_print=1):

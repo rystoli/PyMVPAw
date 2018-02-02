@@ -454,9 +454,9 @@ def roiBDSM_xSs_d(data,xSs_behav1,targ_comp1,xSs_behav2,targ_comp2,roi_mask_nii_
 # Pairsim ROI
 ###################################################
 
-def roi_pairsim_1Ss(ds, roi_mask_nii_path, pairs, pairwise_metric='correlation', fisherz=1):
+def roi_pairsim_1Ss(ds, roi_mask_nii_path, pairs, pairwise_metric='correlation'):
     '''
-    Calculates (dis)similarities b/w all specified pairs of targets inside an ROI,
+    Calculates dissimilarities b/w all specified pairs of targets inside an ROI,
     ...one use being ANOVA comparing similarity values between conditions
 
     ---
@@ -464,7 +464,6 @@ def roi_pairsim_1Ss(ds, roi_mask_nii_path, pairs, pairwise_metric='correlation',
     roi_mask_nii_path: path to nifti of roi mask
     pairs: list of lists (pairs) of target names
     pairwise_metric: distance metric to be used
-    fisherz: 1 if should flip cor distance to pearson r and fisher z
     ---
 
     Return: dict with pair names (keys) and pair dissimilarity values (values)
@@ -474,13 +473,12 @@ def roi_pairsim_1Ss(ds, roi_mask_nii_path, pairs, pairwise_metric='correlation',
     ds = mean_group_sample(['targets'])(data_m)
     ps = rsa_pymvpaw.Pairsim(pairs,pairwise_metric=pairwise_metric)
     res = ps(ds).samples[0][0]
-    if fisherz == 1: res = dict( [ (p,fisherz_pearsonr_array(res[p],flip2pearsonr=1)) for p in res ] )
     return res
     
-def roi_pairsim_nSs(data, roi_mask_nii_path, pairs, pairwise_metric='correlation', fisherz=1, csv=1, csvout = 'roi_pairsim_nSs.csv'):
+def roi_pairsim_nSs(data, roi_mask_nii_path, pairs, pairwise_metric='correlation', csv=1, csvout = 'roi_pairsim_nSs.csv'):
     '''
 
-    Calculates (dis)similarities b/w all specified pairs of targets inside an ROI, per subject,
+    Calculates dissimilarities b/w all specified pairs of targets inside an ROI, per subject,
     ...one use being ANOVA comparing similarity values between conditions
 
     ---
@@ -488,7 +486,6 @@ def roi_pairsim_nSs(data, roi_mask_nii_path, pairs, pairwise_metric='correlation
     roi_mask_nii_path: path to nifti of roi mask
     pairs: list of lists (pairs) of target names
     pairwise_metric: distance metric to be used
-    fisherz: 1 if should flip cor distance to pearson r and fisher z
     csv: 1 if desire to save output csv of results
     csvout: filename of csv to be saved if csv == 1
     ---
@@ -497,7 +494,7 @@ def roi_pairsim_nSs(data, roi_mask_nii_path, pairs, pairwise_metric='correlation
             ...dictionaries with pair names (keys) and pair dissimilarity values (values)
     '''
 
-    res = dict ( [ (s,roi_pairsim_1Ss(data[s],roi_mask_nii_path,pairs,pairwise_metric=pairwise_metric,fisherz=fisherz)) for s in data ] )
+    res = dict ( [ (s,roi_pairsim_1Ss(data[s],roi_mask_nii_path,pairs,pairwise_metric=pairwise_metric)) for s in data ] )
     res = dict([(s, dict([(t,float(res[s][t])) for t in res[s]])) for s in res])
     if csv == 1: pd.DataFrame(res).transpose().to_csv(csvout,sep=',')
     return res

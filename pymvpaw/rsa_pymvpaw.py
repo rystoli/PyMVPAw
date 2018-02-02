@@ -464,7 +464,7 @@ class SampleBySampleSimilarityCorrelation(Measure):
 
 class Pairsim(Measure):
     """
-    Returns (dis)similarity value of specified targets (or multiple pairs) 
+    Returns dissimilarity value of specified targets (or multiple pairs) 
     """
     
     is_trained = True
