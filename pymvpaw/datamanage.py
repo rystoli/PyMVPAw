@@ -293,47 +293,47 @@ def roi2ndm_nSs(data, mask, avgndm = False):
     else: return ndsms
 
 
-def plotteRy_Glass(ds_path, ds_slice = 0, threshold = 0, smooth = 0):
-    '''
-    Plot nilearn glass brain plots from PyMVPAw saved niftis 
-    (eg, via ds2nifti or datadict2nifti) #right now functions via jupyter notebooks
+# def plotteRy_Glass(ds_path, ds_slice = 0, threshold = 0, smooth = 0):
+#     '''
+#     Plot nilearn glass brain plots from PyMVPAw saved niftis 
+#     (eg, via ds2nifti or datadict2nifti) #right now functions via jupyter notebooks
     
-    NOTE: currently only threshold to look at vals greater than threshold
+#     NOTE: currently only threshold to look at vals greater than threshold
 
-    ds_path: path to nifti file saved via ds2nifti or datadict2nifti
-    ds_slice: slice of the nifti file to be plotted
-    threshold: thresholding (currently only plots values greater than threshold)
-    smooth: gaussian smoothing if you would prefer to apply to plot
+#     ds_path: path to nifti file saved via ds2nifti or datadict2nifti
+#     ds_slice: slice of the nifti file to be plotted
+#     threshold: thresholding (currently only plots values greater than threshold)
+#     smooth: gaussian smoothing if you would prefer to apply to plot
 
-    returns: no return, provides plot (supported in jupyter)
-    '''
-    ds = fmri_dataset(ds_path)[ds_slice]
-    ds.samples = ds.samples * (ds.samples > threshold)
-    ds2nifti(ds,ds,'temp_glass_plot_pymvpaw.nii')
-    dsn_s = image.smooth_img('temp_glass_plot_pymvpaw.nii',smooth)
-    pl.plot_glass_brain(dsn_s)
+#     returns: no return, provides plot (supported in jupyter)
+#     '''
+#     ds = fmri_dataset(ds_path)[ds_slice]
+#     ds.samples = ds.samples * (ds.samples > threshold)
+#     ds2nifti(ds,ds,'temp_glass_plot_pymvpaw.nii')
+#     dsn_s = image.smooth_img('temp_glass_plot_pymvpaw.nii',smooth)
+#     pl.plot_glass_brain(dsn_s)
     
-def plotteRy_Brain(ds_path, ds_slice = 0, threshold = 0, smooth = 0):
-    '''
-    Plot nltools brainPlot plots from PyMVPAw saved niftis 
-    (eg, via ds2nifti or datadict2nifti) #right now functions via jupyter notebooks
+# def plotteRy_Brain(ds_path, ds_slice = 0, threshold = 0, smooth = 0):
+#     '''
+#     Plot nltools brainPlot plots from PyMVPAw saved niftis 
+#     (eg, via ds2nifti or datadict2nifti) #right now functions via jupyter notebooks
     
-    NOTE: currently only threshold to look at vals greater than threshold
+#     NOTE: currently only threshold to look at vals greater than threshold
 
-    ds_path: path to nifti file saved via ds2nift or datadict2nifti
-    ds_slice: slice of the nifti file to be plotted
-    threshold: thresholding (currently only plots values greater than threshold)
-    smooth: gaussian smoothing if you would prefer to apply to plot
+#     ds_path: path to nifti file saved via ds2nift or datadict2nifti
+#     ds_slice: slice of the nifti file to be plotted
+#     threshold: thresholding (currently only plots values greater than threshold)
+#     smooth: gaussian smoothing if you would prefer to apply to plot
 
-    returns: no return, provides plot (supported in jupyter)
-    '''
-    ds = fmri_dataset(ds_path)[ds_slice]
-    ds.samples = ds.samples * (ds.samples > threshold)
-    ds2nifti(ds,ds,'temp_plotBrain_pymvpaw.nii')
-    print('If you specified threshold, ignore unthreshold warning')
-    dsn_s = image.smooth_img('temp_plotBrain_pymvpaw.nii',smooth)
-    dsn_s_bd = nl.data.Brain_Data(dsn_s)
-    nl.plotting.plotBrain(dsn_s_bd)
+#     returns: no return, provides plot (supported in jupyter)
+#     '''
+#     ds = fmri_dataset(ds_path)[ds_slice]
+#     ds.samples = ds.samples * (ds.samples > threshold)
+#     ds2nifti(ds,ds,'temp_plotBrain_pymvpaw.nii')
+#     print('If you specified threshold, ignore unthreshold warning')
+#     dsn_s = image.smooth_img('temp_plotBrain_pymvpaw.nii',smooth)
+#     dsn_s_bd = nl.data.Brain_Data(dsn_s)
+#     nl.plotting.plotBrain(dsn_s_bd)
 
 
 
