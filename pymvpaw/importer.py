@@ -11,7 +11,7 @@ import rsa_pymvpaw as rsa_pymvpaw
 import group_clusterthr_pymvpaw as gct_pymvpaw
 from scipy.spatial.distance import pdist, squareform
 import pandas as pd
-import nltools as nl
-import nilearn.plotting as pl
-from nilearn import image
-from nltools.plotting import plotBrain
+# import nltools as nl
+# import nilearn.plotting as pl
+# from nilearn import image
+# from nltools.plotting import plotBrain
