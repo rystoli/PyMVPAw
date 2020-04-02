@@ -118,7 +118,7 @@ def sl_pairsimRSA_1Ss(ds, pairs_dsm, radius=3, cmetric='spearman',status_print=1
     ---
     ds: pymvpa dsets for 1 subj
     pairs_dsm : Dictionary of target pairs separated by '-' (keys) and
-                corresponding predicted model dissimilarity values (values)
+                corresponding predicted model *dissimilarity values (values)
     cmetric: spearman or pearson or eucldiean
     status_print: if 1, prints status of searchlight (progress)
     ---
@@ -151,7 +151,7 @@ def sl_pairsimRSA_nSs(data, pairs_dsm, radius=3, cmetric = 'pearson', h5 = 0, h5
     ---
     data: dictionary of pymvpa dsets per subj, indices being subjIDs
     pairs_dsm : Dictionary of target pairs separated by '-' (keys) and
-                corresponding predicted model dissimilarity values (values)
+                corresponding predicted model *dissimilarity values (values)
     cmetric: pearson or spearman or euclidean
     h5: 1 if you want to save hdf5 as well
     h5out: hdf5 outfilename
@@ -447,7 +447,7 @@ def sl_pairsim_1Ss(ds, pairs, radius=3, pairwise_metric='correlation',status_pri
     status_print: if 1, prints status of searchlight (progress)
     ---
 
-    Return: dict per voxel with pairs as keys, (dis)sim as values
+    Return: dict per voxel with pairs as keys, dissimilarity of pair as values
     '''        
 
     if status_print == 1:
@@ -475,7 +475,7 @@ def sl_pairsim_nSs(data, pairs, radius=3, pairwise_metric = 'correlation', h5 = 
     h5out: hdf5 outfilename
     ---
 
-    Return: datadict of pairwise sim per pair per subject
+    Return: datadict of pairwise dissimilarity per pair per feature per subject
     '''        
     
     slr= {} 
