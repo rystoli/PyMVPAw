@@ -76,6 +76,15 @@ def pcf3(X,Y,Z):
 # PyMVPAw RSA FUNCTIONS
 ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ##
 
+
+"""
+IMPORTANT: If you have a low number of conditions in your DM, and are using Spearman's 
+for your compairson metric, there is a chance the ranked neural and behavioural 
+vectors will be perfectly correlated or anti-correlated. The result 1 or -1 
+correlation values will return an inf or -inf value once z-scored using np.arctanh().
+This will cause NaNs for any t-tests performed on the data including inf or -inf values.
+"""
+
 class TargetDissimilarityCorrelationMeasure_Regression(Measure):
     """
     Target dissimilarity correlation `Measure`. Computes the correlation between
