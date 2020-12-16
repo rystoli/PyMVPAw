@@ -13,11 +13,9 @@ from importer import *
 # Runs slRSA with defined model for 1 subject
 ###############################################
 
-def slRSA_m_1Ss(ds, model, partial_dsm = None, control_dsms = None, resid = False, radius=3, cmetric='pearson',status_print=1):
+def slRSA_m_1Ss(ds, model, partial_dsm = None, control_dsms = None, resid = False, radius=3, cmetric='pearson',pairwise_metric='correlation',status_print=1):
     '''
-
     Executes RSA on single subjects
-
     ---
     ds: pymvpa dsets for 1 subj
     model: model DSM to be correlated with neural DSMs per searchlight center
@@ -27,29 +25,24 @@ def slRSA_m_1Ss(ds, model, partial_dsm = None, control_dsms = None, resid = Fals
     resid: Default False. Set to True to return residual to searchlight center
     radius: sl radius, default 3
     cmetric: default pearson, other optin 'spearman'
+    pairwise_metric :   To be used by pdist to calculate dataset DSM
+                            Default: 'correlation', 
     status_print: if 1, prints status of searchlight (progress)
     ---
-
     Return: np array, RSA results wholebrain, eg, multiple regression betas or fisher Z transformed r's
     '''        
-
     if partial_dsm != None and control_dsms != None: raise NameError('Only set partial_dsm (partial model control) OR control_dsms (multiple regression model controls)')
-
     if status_print == 1:
         if __debug__: debug.active += ["SLC"]
     else: pass
-
     ds = mean_group_sample(['targets'])(ds) #make UT ds
     print('Mean group sample computed at size:',ds.shape,'...with UT:',ds.UT)
-
     print('Beginning slRSA analysis...')
-    if partial_dsm == None and control_dsms == None: tdcm = rsa_pymvpaw.TargetDissimilarityCorrelationMeasure_Partial(squareform(model), comparison_metric=cmetric)
-    elif partial_dsm != None and control_dsms == None: tdcm = rsa_pymvpaw.TargetDissimilarityCorrelationMeasure_Partial(squareform(model), comparison_metric=cmetric, partial_dsm = squareform(partial_dsm))
-    elif partial_dsm == None and control_dsms != None: tdcm = rsa_pymvpaw.TargetDissimilarityCorrelationMeasure_Regression(squareform(model), comparison_metric=cmetric, control_dsms = [squareform(dm) for dm in control_dsms], resid = resid)
-
+    if partial_dsm == None and control_dsms == None: tdcm = rsa_pymvpaw.TargetDissimilarityCorrelationMeasure_Partial(squareform(model), comparison_metric=cmetric, pairwise_metric=pairwise_metric)
+    elif partial_dsm != None and control_dsms == None: tdcm = rsa_pymvpaw.TargetDissimilarityCorrelationMeasure_Partial(squareform(model), comparison_metric=cmetric, partial_dsm = squareform(partial_dsm),  pairwise_metric=pairwise_metric)
+    elif partial_dsm == None and control_dsms != None: tdcm = rsa_pymvpaw.TargetDissimilarityCorrelationMeasure_Regression(squareform(model), comparison_metric=cmetric, control_dsms = [squareform(dm) for dm in control_dsms], resid = resid,  pairwise_metric=pairwise_metric)
     sl = sphere_searchlight(tdcm,radius=radius)
     slmap = sl(ds)
-
     if partial_dsm == None and control_dsms == None:
         print('slRSA complete with map of shape:',slmap.shape,'...r max/min',slmap.samples[0].max(),slmap.samples[0].min())
         return np.arctanh(slmap.samples[0])
@@ -60,16 +53,13 @@ def slRSA_m_1Ss(ds, model, partial_dsm = None, control_dsms = None, resid = Fals
         print('slRSA complete with map of shape:',slmap.shape,'...r max/min:',slmap.samples[0].max(),slmap.samples[0].min())
         return slmap.samples[0]
     
-
 ###############################################
 # Runs group level slRSA with defined model
 ###############################################
 
-def slRSA_m_nSs(data, model, radius=3, partial_dsm = None, control_dsms = None, resid = False, cmetric = 'pearson', h5 = 0, h5out = 'slRSA_m_nSs.hdf5',status_print=1):
+def slRSA_m_nSs(data, model, radius=3, partial_dsm = None, control_dsms = None, resid = False, cmetric = 'pearson', pairwise_metric='correlation',h5 = 0, h5out = 'slRSA_m_nSs.hdf5',status_print=1):
     '''
-
     Executes slRSA per subject in datadict (keys=subjIDs)
-
     ---
     data: dictionary of pymvpa dsets per subj, indices being subjIDs
     model: model DSM to be correlated with neural DSMs per searchlight center
@@ -82,27 +72,22 @@ def slRSA_m_nSs(data, model, radius=3, partial_dsm = None, control_dsms = None, 
     h5: 1 if you want to save hdf5 as well
     h5out: hdf5 outfilename
     ---
-
     Return: dict, avg map RSA results per subject (e.g., betas via multiple regression, or fisher z r values)
     '''        
-    
     print('Model slRSA initiated with...\n Ss: %s\nmodel shape: %s\nradius: %s\nh5: %s\nh5out: %s' % (data.keys(),model.shape,radius,h5,h5out))
-
     ### slRSA per subject ###
     slr={} #dictionary to hold fzt r's
     print('Beginning group level searchlight on %s Ss...' % (len(data)))
     for subjid,ds in data.iteritems():
         print('\nPreparing slRSA for subject %s' % (subjid))
-        subj_data = slRSA_m_1Ss(ds,model,partial_dsm=partial_dsm,control_dsms=control_dsms,resid=resid,cmetric=cmetric,status_print=status_print)
+        subj_data = slRSA_m_1Ss(ds,model,partial_dsm=partial_dsm,control_dsms=control_dsms,resid=resid,cmetric=cmetric, pairwise_metric=pairwise_metric,status_print=status_print)
         if partial_dsm == None and control_dsms == None: slr[subjid] = subj_data
         else: slr[subjid] = subj_data
     print('slRSA complete for all subjects')
-
     if h5==1:
         h5save(h5out,slr,compression=9)
         return slr
     else: return slr
-    
 
 ###############################################
 # Pairsim RSA 1 subject
