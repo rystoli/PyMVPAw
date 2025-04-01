@@ -3,6 +3,9 @@ PyMVPAw
 
 Wrappers &amp; additions to [PyMVPA](http://www.pymvpa.org/) 
 
+## 4/1/25
+This was developed many years ago, in Python 2 days! I have learned others are using this recently, and suggest updates! I am no longer in the field. Can't imagine the progress that's been made.
+
 ## Purpose
 These are wrappers and additional methods for PyMVPA as used by our lab. Wrappers reduce various analyses and output to single functions, and provide an assortment of useful tools for managing pymvpa datasets. Additional methods at this point are primarily unique methods of representational similarity analysis.  PyMVPAw</a> is an unnecessarily eponymous wrapper for <a href="http://www.pymvpa.org/">PyMVPA</a>. PyMVPA is a wonderful module for MVPA, multi-variate pattern analysis, of data - especially, in my case, fMRI data. In PyMVPAw, many of PyMVPA's pattern analysis tools are available in single function commands to make the magic of PyMVPA less verbose. For instance, you can run an entire searchlight multiple regression Representational Similarity Analysis with a single line of code:
 
